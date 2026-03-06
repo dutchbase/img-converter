@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: Not started
+current_plan: Complete
 status: planning
-stopped_at: Completed 02-04-PLAN.md (batch orchestration + ImageConverter rewrite)
-last_updated: "2026-03-06T19:16:52.379Z"
+stopped_at: Phase 2 complete — all 7 batch UX requirements verified (REQ-201 through REQ-207)
+last_updated: "2026-03-06T20:30:00Z"
 progress:
   total_phases: 5
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 10
-  completed_plans: 9
+  completed_plans: 10
 ---
 
 # Project State
@@ -25,19 +25,29 @@ progress:
 
 ## Current Phase
 
-**Phase 1:** Security & Correctness Hardening (in progress — plan 03/04 complete)
+**Phase 2:** Batch Browser UX — COMPLETE (2026-03-06)
 
-**Current Plan:** Not started
+**Current Plan:** Complete
 
 ## Completed Phases
 
-None yet — Phase 1 in progress.
+- **Phase 1:** Security & Correctness Hardening (completed 2026-03-06)
+- **Phase 2:** Batch Browser UX (completed 2026-03-06)
 
 ## Completed Plans (Phase 1)
 
 - **01-01:** Test infrastructure setup — Jest + ts-jest installed, stub tests for REQ-101 through REQ-107, npm test exits 0
 - **01-02:** imageProcessor.ts security fixes — pixel limit check (processImage throws on >25MP), format-safe output, animated GIF passthrough (done)
 - **01-03:** API route security fixes — dynamic file-type MIME verification (415), sharp pixel pre-check (422), sanitizeFilename with Content-Disposition safety (done)
+
+## Completed Plans (Phase 2)
+
+- **02-01:** Wave 0 test stubs — processingQueue + batchQueue it.todo() stubs, npm test exits 0
+- **02-02:** Types + server semaphore — BatchItem type, lib/processingQueue.ts (async-sema singleton, cap 3), route.ts acquire/release wiring
+- **02-03:** DropZone multi-file — multiple attribute, onFilesSelect(files: File[]) callback, disabled prop for lock-during-conversion
+- **02-04:** Batch orchestration — ImageConverter.tsx rewritten with BatchItem[] state, p-limit(4), handleConvertAll/handleRetryItem/handleClearQueue
+- **02-05:** BatchQueue component — per-file rows with status badges, aggregate count, ZIP download via client-zip
+- **02-06:** Human verify — ESM mock fix (p-limit/client-zip), npm test all 6 suites pass, npm run build exits 0, all 7 manual browser scenarios approved
 
 ## Planning Artifacts
 
@@ -76,6 +86,7 @@ None yet — Phase 1 in progress.
 - [Phase 02]: isAnimatedGif defined and exported inline in ImageConverter.tsx (lib/gifDetection.ts absent; preserves Phase 1 test compat)
 - [Phase 02]: pLimit(4) scoped inside handleConvertAll — prevents stale limit instance across multiple Convert All invocations
 - [Phase 02]: handleRetryItem runs without pLimit — single item retry does not need concurrency limiting
+- [Phase 02]: ESM-only packages (p-limit, client-zip) mocked for Jest via __mocks__/*.js + moduleNameMapper — simpler than transformIgnorePatterns and works with all-todo test stubs
 
 ## Performance Metrics
 
@@ -90,12 +101,13 @@ None yet — Phase 1 in progress.
 | Phase 02 P02 | 12min | 2 tasks | 4 files |
 | Phase 02 P05 | 1min | 1 tasks | 1 files |
 | Phase 02 P04 | 8min | 2 tasks | 2 files |
+| 02    | 06   | 25min    | 2     | 3     |
 
 ## Last Session
 
-**Stopped at:** Completed 02-04-PLAN.md (batch orchestration + ImageConverter rewrite)
-**Timestamp:** 2026-03-06T16:15:00Z
+**Stopped at:** Phase 2 complete — 02-06-PLAN.md (human verify: all 7 batch UX scenarios approved)
+**Timestamp:** 2026-03-06T20:30:00Z
 
 ## Next Action
 
-Execute plan 01-04 (smoke-test checkpoint).
+Execute Phase 3: HEIC Input Support.

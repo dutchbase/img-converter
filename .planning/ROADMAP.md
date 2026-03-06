@@ -10,7 +10,7 @@
 ## Phases
 
 - [x] **Phase 1: Security & Correctness Hardening** - Fix all existing bugs and security issues before layering on new features (completed 2026-03-06)
-- [ ] **Phase 2: Batch Browser UX** - Multi-file conversion queue with shared settings and ZIP download
+- [x] **Phase 2: Batch Browser UX** - Multi-file conversion queue with shared settings and ZIP download (completed 2026-03-06)
 - [ ] **Phase 3: HEIC Input Support** - Accept iPhone HEIC/HEIF photos as first-class input
 - [ ] **Phase 4: CLI Tool** - Command-line `img-convert` tool backed by the existing processor
 - [ ] **Phase 5: API Polish & Dark Mode** - Structured error responses and system dark mode
@@ -156,12 +156,12 @@ npm install p-limit async-sema client-zip
 **Plans**: 6 plans
 
 Plans:
-- [ ] 02-01-PLAN.md — Wave 0 test stubs: processingQueue + batchQueue todo stubs
-- [ ] 02-02-PLAN.md — Types + server semaphore: BatchItem type, lib/processingQueue.ts, route.ts wiring
-- [ ] 02-03-PLAN.md — DropZone multi-file: multiple attribute, onFilesSelect callback, disabled prop
-- [ ] 02-04-PLAN.md — Batch orchestration: ImageConverter.tsx with BatchItem[] state and p-limit(4)
-- [ ] 02-05-PLAN.md — BatchQueue component: row list, status badges, ZIP download
-- [ ] 02-06-PLAN.md — Human verify: full suite gate + end-to-end manual testing
+- [x] 02-01-PLAN.md — Wave 0 test stubs: processingQueue + batchQueue todo stubs
+- [x] 02-02-PLAN.md — Types + server semaphore: BatchItem type, lib/processingQueue.ts, route.ts wiring
+- [x] 02-03-PLAN.md — DropZone multi-file: multiple attribute, onFilesSelect callback, disabled prop
+- [x] 02-04-PLAN.md — Batch orchestration: ImageConverter.tsx with BatchItem[] state and p-limit(4)
+- [x] 02-05-PLAN.md — BatchQueue component: row list, status badges, ZIP download
+- [x] 02-06-PLAN.md — Human verify: full suite gate + end-to-end manual testing
 
 ---
 
@@ -349,8 +349,8 @@ npm install --save-dev @types/glob
 
 | Phase | Requirements | Plans Complete | Status | Completed |
 |-------|-------------|----------------|--------|-----------|
-| 1. Security & Correctness Hardening | 4/4 | Complete   | 2026-03-06 | - |
-| 2. Batch Browser UX | 5/6 | In Progress|  | - |
+| 1. Security & Correctness Hardening | 7/7 | 4/4 Complete   | Complete | 2026-03-06 |
+| 2. Batch Browser UX | 7/7 | 6/6 Complete | Complete | 2026-03-06 |
 | 3. HEIC Input Support | REQ-301 through REQ-303 | 0/? | Not started | - |
 | 4. CLI Tool | REQ-401 through REQ-406 | 0/? | Not started | - |
 | 5. API Polish & Dark Mode | REQ-501 through REQ-502 | 0/? | Not started | - |
