@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import sharp from "sharp";
 import { processImage, detectFormat } from "@/lib/imageProcessor";
+import { processingQueue } from "@/lib/processingQueue";
 import { ConvertOptions, ImageFormat, FORMAT_MIME, FORMAT_EXTENSIONS } from "@/types";
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
@@ -101,7 +102,13 @@ export async function POST(req: NextRequest) {
       allowUpscaling,
     };
 
-    const outputBuffer = await processImage(inputBuffer, options);
+    await processingQueue.acquire();
+    let outputBuffer: Buffer;
+    try {
+      outputBuffer = await processImage(inputBuffer, options);
+    } finally {
+      processingQueue.release();
+    }
 
     // REQ-102: Sanitize filename for Content-Disposition header
     const rawName = file.name.replace(/\.[^.]+$/, "");

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { ImageFormat, ConvertOptions, ConvertResult } from "@/types/client";
+import { ImageFormat, ConvertOptions, ConvertResult, detectFormatFromMime } from "@/types/client";
 import DropZone from "./DropZone";
 import ImagePreview from "./ImagePreview";
 import ConvertOptionsPanel from "./ConvertOptions";
@@ -68,6 +68,17 @@ export default function ImageConverter() {
     }
   }, []);
 
+  // Adapter: DropZone now calls onFilesSelect with an array — pick first file for single-mode
+  const handleFilesSelect = useCallback(
+    (files: File[]) => {
+      if (files.length === 0) return;
+      const first = files[0];
+      const fmt = detectFormatFromMime(first.type);
+      if (fmt) handleFileSelect(first, fmt);
+    },
+    [handleFileSelect]
+  );
+
   const handleClear = useCallback(() => {
     if (result?.url) URL.revokeObjectURL(result.url);
     setFile(null);
@@ -118,7 +129,7 @@ export default function ImageConverter() {
   return (
     <div className="w-full max-w-2xl mx-auto flex flex-col gap-6">
       {!file ? (
-        <DropZone onFileSelect={handleFileSelect} />
+        <DropZone onFilesSelect={handleFilesSelect} />
       ) : (
         <>
           <ImagePreview file={file} sourceFormat={sourceFormat!} onClear={handleClear} />
