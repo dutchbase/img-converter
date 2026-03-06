@@ -350,7 +350,7 @@ npm install --save-dev @types/glob
 | Phase | Requirements | Plans Complete | Status | Completed |
 |-------|-------------|----------------|--------|-----------|
 | 1. Security & Correctness Hardening | 4/4 | Complete   | 2026-03-06 | - |
-| 2. Batch Browser UX | 4/6 | In Progress|  | - |
+| 2. Batch Browser UX | 5/6 | In Progress|  | - |
 | 3. HEIC Input Support | REQ-301 through REQ-303 | 0/? | Not started | - |
 | 4. CLI Tool | REQ-401 through REQ-406 | 0/? | Not started | - |
 | 5. API Polish & Dark Mode | REQ-501 through REQ-502 | 0/? | Not started | - |

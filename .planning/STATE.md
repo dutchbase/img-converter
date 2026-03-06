@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 current_plan: Not started
 status: planning
-stopped_at: Completed 02-05-PLAN.md (BatchQueue component)
-last_updated: "2026-03-06T19:15:37.650Z"
+stopped_at: Completed 02-04-PLAN.md (batch orchestration + ImageConverter rewrite)
+last_updated: "2026-03-06T19:16:52.379Z"
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 10
-  completed_plans: 8
+  completed_plans: 9
 ---
 
 # Project State
@@ -73,6 +73,9 @@ None yet — Phase 1 in progress.
 - [Phase 02]: ImageConverter bridges to new multi-file DropZone API via handleFilesSelect adapter picking first file for single-image mode
 - [Phase 02]: handleDownloadZip is module-level async function (not inside component) — avoids hook constraints for ZIP trigger
 - [Phase 02]: ZIP generation reads item.result.blob directly (stored at conversion time in BatchItemResult) — no re-fetch of blob URL needed
+- [Phase 02]: isAnimatedGif defined and exported inline in ImageConverter.tsx (lib/gifDetection.ts absent; preserves Phase 1 test compat)
+- [Phase 02]: pLimit(4) scoped inside handleConvertAll — prevents stale limit instance across multiple Convert All invocations
+- [Phase 02]: handleRetryItem runs without pLimit — single item retry does not need concurrency limiting
 
 ## Performance Metrics
 
@@ -86,10 +89,11 @@ None yet — Phase 1 in progress.
 | Phase 02 P03 | 8min | 1 tasks | 2 files |
 | Phase 02 P02 | 12min | 2 tasks | 4 files |
 | Phase 02 P05 | 1min | 1 tasks | 1 files |
+| Phase 02 P04 | 8min | 2 tasks | 2 files |
 
 ## Last Session
 
-**Stopped at:** Completed 02-05-PLAN.md (BatchQueue component)
+**Stopped at:** Completed 02-04-PLAN.md (batch orchestration + ImageConverter rewrite)
 **Timestamp:** 2026-03-06T16:15:00Z
 
 ## Next Action
