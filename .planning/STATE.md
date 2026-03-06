@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 current_plan: Not started
 status: planning
-stopped_at: Completed 02-03-PLAN.md
-last_updated: "2026-03-06T19:11:11.032Z"
+stopped_at: Completed 02-02-PLAN.md (batch types + semaphore)
+last_updated: "2026-03-06T19:12:38.947Z"
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 10
-  completed_plans: 6
+  completed_plans: 7
 ---
 
 # Project State
@@ -68,6 +68,9 @@ None yet — Phase 1 in progress.
 - [Phase 02]: batchQueue.test.ts omits top-level imports of unimplemented modules to avoid module resolution errors with todo stubs
 - [Phase 02]: onFileSelect(file, format) renamed to onFilesSelect(files: File[]) — parent handles format detection, DropZone only filters by MIME
 - [Phase 02]: Mixed batch (some valid, some unsupported) calls onFilesSelect with valid subset, no error shown
+- [Phase 02]: Semaphore try/finally wraps only processImage(); response construction runs after finally so outputBuffer is in outer scope while guaranteeing release on error
+- [Phase 02]: BatchItem.result.blob stores raw Blob at conversion time to avoid re-fetch when building ZIP in later plan
+- [Phase 02]: ImageConverter bridges to new multi-file DropZone API via handleFilesSelect adapter picking first file for single-image mode
 
 ## Performance Metrics
 
@@ -79,10 +82,11 @@ None yet — Phase 1 in progress.
 | Phase 01 P04 | 15min | 3 tasks | 5 files |
 | Phase 02 P01 | 3min | 2 tasks | 2 files |
 | Phase 02 P03 | 8min | 1 tasks | 2 files |
+| Phase 02 P02 | 12min | 2 tasks | 4 files |
 
 ## Last Session
 
-**Stopped at:** Completed 02-03-PLAN.md
+**Stopped at:** Completed 02-02-PLAN.md (batch types + semaphore)
 **Timestamp:** 2026-03-06T16:15:00Z
 
 ## Next Action
