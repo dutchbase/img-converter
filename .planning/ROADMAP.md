@@ -153,7 +153,15 @@ npm install p-limit async-sema client-zip
 4. After all files complete, clicking "Download all as ZIP" downloads a single `.zip` file containing all converted images with their original base names and new extensions.
 5. Running 50 files through the batch does not crash the server or produce out-of-memory errors (semaphore limits server concurrency to 3, client limits to 4 simultaneous requests).
 
-**Plans**: TBD
+**Plans**: 6 plans
+
+Plans:
+- [ ] 02-01-PLAN.md — Wave 0 test stubs: processingQueue + batchQueue todo stubs
+- [ ] 02-02-PLAN.md — Types + server semaphore: BatchItem type, lib/processingQueue.ts, route.ts wiring
+- [ ] 02-03-PLAN.md — DropZone multi-file: multiple attribute, onFilesSelect callback, disabled prop
+- [ ] 02-04-PLAN.md — Batch orchestration: ImageConverter.tsx with BatchItem[] state and p-limit(4)
+- [ ] 02-05-PLAN.md — BatchQueue component: row list, status badges, ZIP download
+- [ ] 02-06-PLAN.md — Human verify: full suite gate + end-to-end manual testing
 
 ---
 
