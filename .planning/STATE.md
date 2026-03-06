@@ -53,6 +53,10 @@ None yet — Phase 1 in progress.
 - Used ts-jest preset with esModuleInterop:true to handle Next.js @/ alias in tests
 - All Wave 0 test stubs use it.todo() so npm test exits 0 before implementation plans run
 - Fixtures generated at runtime in beforeAll (not checked in as binary blobs)
+- Two-instance Sharp pattern: separate sharp(buffer) for metadata pre-check from processing instance to avoid pipeline pollution (01-02)
+- allowUpscaling is optional boolean — undefined = false (no upscaling), safe default (01-02)
+- keepIccProfile() replaces deprecated withMetadata({exif:{}}) to preserve ICC profiles when stripping EXIF (01-02)
+- AVIF effort:4 is Sharp's default — made explicit to document and enforce CPU cap (01-02)
 - Dynamic `await import("file-type")` pattern to avoid ERR_REQUIRE_ESM in Next.js CJS context (01-03)
 - `sanitizeFilename()` extracted as pure function from route handler for unit testability (01-03)
 - Consistent `{ error: CODE, message: string }` error response shape across all route handlers (01-03)
@@ -62,12 +66,13 @@ None yet — Phase 1 in progress.
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
 | 01    | 01   | 4min     | 2     | 5     |
+| 01    | 02   | 8min     | 1     | 5     |
 | 01    | 03   | 3min     | 3     | 2     |
 
 ## Last Session
 
-**Stopped at:** Completed 01-03-PLAN.md (API route security fixes)
-**Timestamp:** 2026-03-06T16:08:30Z
+**Stopped at:** Completed 01-02-PLAN.md (imageProcessor security and correctness fixes)
+**Timestamp:** 2026-03-06T16:15:00Z
 
 ## Next Action
 
