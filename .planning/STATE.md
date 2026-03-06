@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 current_plan: Not started
 status: planning
-stopped_at: Completed 02-02-PLAN.md (batch types + semaphore)
-last_updated: "2026-03-06T19:12:38.947Z"
+stopped_at: Completed 02-05-PLAN.md (BatchQueue component)
+last_updated: "2026-03-06T19:15:37.650Z"
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 10
-  completed_plans: 7
+  completed_plans: 8
 ---
 
 # Project State
@@ -71,6 +71,8 @@ None yet — Phase 1 in progress.
 - [Phase 02]: Semaphore try/finally wraps only processImage(); response construction runs after finally so outputBuffer is in outer scope while guaranteeing release on error
 - [Phase 02]: BatchItem.result.blob stores raw Blob at conversion time to avoid re-fetch when building ZIP in later plan
 - [Phase 02]: ImageConverter bridges to new multi-file DropZone API via handleFilesSelect adapter picking first file for single-image mode
+- [Phase 02]: handleDownloadZip is module-level async function (not inside component) — avoids hook constraints for ZIP trigger
+- [Phase 02]: ZIP generation reads item.result.blob directly (stored at conversion time in BatchItemResult) — no re-fetch of blob URL needed
 
 ## Performance Metrics
 
@@ -83,10 +85,11 @@ None yet — Phase 1 in progress.
 | Phase 02 P01 | 3min | 2 tasks | 2 files |
 | Phase 02 P03 | 8min | 1 tasks | 2 files |
 | Phase 02 P02 | 12min | 2 tasks | 4 files |
+| Phase 02 P05 | 1min | 1 tasks | 1 files |
 
 ## Last Session
 
-**Stopped at:** Completed 02-02-PLAN.md (batch types + semaphore)
+**Stopped at:** Completed 02-05-PLAN.md (BatchQueue component)
 **Timestamp:** 2026-03-06T16:15:00Z
 
 ## Next Action
