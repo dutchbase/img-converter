@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 current_plan: 04 of 04
 status: executing
-stopped_at: Completed 01-01-PLAN.md
-last_updated: "2026-03-06T16:08:29.872Z"
+stopped_at: Completed 01-04-PLAN.md
+last_updated: "2026-03-06T17:13:42.662Z"
 progress:
   total_phases: 5
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 4
-  completed_plans: 2
+  completed_plans: 4
 ---
 
 # Project State
@@ -60,6 +60,10 @@ None yet — Phase 1 in progress.
 - Dynamic `await import("file-type")` pattern to avoid ERR_REQUIRE_ESM in Next.js CJS context (01-03)
 - `sanitizeFilename()` extracted as pure function from route handler for unit testability (01-03)
 - Consistent `{ error: CODE, message: string }` error response shape across all route handlers (01-03)
+- [Phase 01]: isAnimatedGif exported from lib/gifDetection.ts as pure synchronous function for direct testability
+- [Phase 01]: isAnimatedGifFile state name used in ImageConverter to avoid collision with isAnimatedGif import
+- [Phase 01]: 64 KB scan window for GCE marker counting to avoid false negatives on large animated GIFs
+- [Phase 01]: allowUpscaling checkbox hidden when no resize dimensions are entered
 
 ## Performance Metrics
 
@@ -68,10 +72,11 @@ None yet — Phase 1 in progress.
 | 01    | 01   | 4min     | 2     | 5     |
 | 01    | 02   | 8min     | 1     | 5     |
 | 01    | 03   | 3min     | 3     | 2     |
+| Phase 01 P04 | 15min | 3 tasks | 5 files |
 
 ## Last Session
 
-**Stopped at:** Completed 01-02-PLAN.md (imageProcessor security and correctness fixes)
+**Stopped at:** Completed 01-04-PLAN.md
 **Timestamp:** 2026-03-06T16:15:00Z
 
 ## Next Action

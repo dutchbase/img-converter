@@ -9,7 +9,7 @@
 
 ## Phases
 
-- [ ] **Phase 1: Security & Correctness Hardening** - Fix all existing bugs and security issues before layering on new features
+- [x] **Phase 1: Security & Correctness Hardening** - Fix all existing bugs and security issues before layering on new features (completed 2026-03-06)
 - [ ] **Phase 2: Batch Browser UX** - Multi-file conversion queue with shared settings and ZIP download
 - [ ] **Phase 3: HEIC Input Support** - Accept iPhone HEIC/HEIF photos as first-class input
 - [ ] **Phase 4: CLI Tool** - Command-line `img-convert` tool backed by the existing processor
@@ -341,7 +341,7 @@ npm install --save-dev @types/glob
 
 | Phase | Requirements | Plans Complete | Status | Completed |
 |-------|-------------|----------------|--------|-----------|
-| 1. Security & Correctness Hardening | 3/4 | In Progress|  | - |
+| 1. Security & Correctness Hardening | 4/4 | Complete   | 2026-03-06 | - |
 | 2. Batch Browser UX | REQ-201 through REQ-207 | 0/? | Not started | - |
 | 3. HEIC Input Support | REQ-301 through REQ-303 | 0/? | Not started | - |
 | 4. CLI Tool | REQ-401 through REQ-406 | 0/? | Not started | - |
