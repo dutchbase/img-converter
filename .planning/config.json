@@ -1,0 +1,20 @@
+{
+  "mode": "autonomous",
+  "granularity": "standard",
+  "parallelization": true,
+  "commit_docs": true,
+  "agents": {
+    "research": true,
+    "plan_checker": true,
+    "verifier": true,
+    "model_profile": "balanced"
+  },
+  "models": {
+    "planner": "sonnet",
+    "reviewer": "sonnet",
+    "worker": "haiku",
+    "researcher": "sonnet",
+    "synthesizer": "sonnet",
+    "roadmapper": "sonnet"
+  }
+}
