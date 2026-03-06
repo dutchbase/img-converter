@@ -88,6 +88,8 @@ export async function POST(req: NextRequest) {
     const resizeHeightRaw = formData.get("resizeHeight") as string | null;
     const maintainAspectRatio = formData.get("maintainAspectRatio") === "true";
     const removeMetadata = formData.get("removeMetadata") === "true";
+    // REQ-107: Parse allowUpscaling from formData (only sent when checkbox is checked)
+    const allowUpscaling = formData.get("allowUpscaling") === "true";
 
     const options: ConvertOptions = {
       targetFormat,
@@ -96,6 +98,7 @@ export async function POST(req: NextRequest) {
       resizeHeight: resizeHeightRaw ? parseInt(resizeHeightRaw, 10) : null,
       maintainAspectRatio,
       removeMetadata,
+      allowUpscaling,
     };
 
     const outputBuffer = await processImage(inputBuffer, options);
