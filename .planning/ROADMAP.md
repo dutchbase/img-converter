@@ -82,7 +82,13 @@ npm install file-type
 5. AVIF conversion of a large image completes in a reasonable time (no indefinite hang from uncapped libaom encoding).
 6. Specifying a resize dimension larger than the original image does not enlarge the image by default; the "Allow upscaling" toggle makes enlargement possible.
 
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — Test infrastructure: Jest + ts-jest setup, fixture files, stub test suites
+- [ ] 01-02-PLAN.md — imageProcessor.ts fixes: pixel limit guard, ICC preservation, AVIF effort cap, upscaling prevention (TDD)
+- [ ] 01-03-PLAN.md — Route handler fixes: dimension 422, filename sanitization, file-type MIME verification (TDD)
+- [ ] 01-04-PLAN.md — UI additions: AVIF hint, animated GIF banner (client-side detection), Allow upscaling toggle + human verify
 
 ---
 
@@ -335,7 +341,7 @@ npm install --save-dev @types/glob
 
 | Phase | Requirements | Plans Complete | Status | Completed |
 |-------|-------------|----------------|--------|-----------|
-| 1. Security & Correctness Hardening | REQ-101 through REQ-107 | 0/? | Not started | - |
+| 1. Security & Correctness Hardening | 2/4 | In Progress|  | - |
 | 2. Batch Browser UX | REQ-201 through REQ-207 | 0/? | Not started | - |
 | 3. HEIC Input Support | REQ-301 through REQ-303 | 0/? | Not started | - |
 | 4. CLI Tool | REQ-401 through REQ-406 | 0/? | Not started | - |
