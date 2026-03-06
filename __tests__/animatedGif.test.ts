@@ -1,5 +1,6 @@
 import path from "path";
 import fs from "fs";
+import { isAnimatedGif } from "@/components/ImageConverter";
 
 const FIXTURES = path.join(__dirname, "fixtures");
 
@@ -24,7 +25,16 @@ beforeAll(() => {
 });
 
 describe("isAnimatedGif — REQ-106: client-side animated GIF detection", () => {
-  it.todo("returns true for a buffer containing two GCE frame markers");
-  it.todo("returns false for a static GIF with no GCE markers");
-  it.todo("returns false for a non-GIF file");
+  it("returns true for a buffer containing two GCE frame markers", () => {
+    const bytes = new Uint8Array(fs.readFileSync(path.join(FIXTURES, "animated.gif")));
+    expect(isAnimatedGif(bytes)).toBe(true);
+  });
+  it("returns false for a static GIF with no GCE markers", () => {
+    const bytes = new Uint8Array(fs.readFileSync(path.join(FIXTURES, "static.gif")));
+    expect(isAnimatedGif(bytes)).toBe(false);
+  });
+  it("returns false for a non-GIF file", () => {
+    const pngHeader = new Uint8Array([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A]);
+    expect(isAnimatedGif(pngHeader)).toBe(false);
+  });
 });
