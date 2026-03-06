@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 current_plan: Not started
 status: planning
-stopped_at: Completed 02-01-PLAN.md
-last_updated: "2026-03-06T19:10:22.778Z"
+stopped_at: Completed 02-03-PLAN.md
+last_updated: "2026-03-06T19:11:11.032Z"
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 10
-  completed_plans: 5
+  completed_plans: 6
 ---
 
 # Project State
@@ -66,6 +66,8 @@ None yet — Phase 1 in progress.
 - [Phase 01]: allowUpscaling checkbox hidden when no resize dimensions are entered
 - [Phase 02]: processingQueue.test.ts uses top-level import from @/lib/processingQueue despite non-existence — it.todo() skips execution so Jest exits 0
 - [Phase 02]: batchQueue.test.ts omits top-level imports of unimplemented modules to avoid module resolution errors with todo stubs
+- [Phase 02]: onFileSelect(file, format) renamed to onFilesSelect(files: File[]) — parent handles format detection, DropZone only filters by MIME
+- [Phase 02]: Mixed batch (some valid, some unsupported) calls onFilesSelect with valid subset, no error shown
 
 ## Performance Metrics
 
@@ -76,10 +78,11 @@ None yet — Phase 1 in progress.
 | 01    | 03   | 3min     | 3     | 2     |
 | Phase 01 P04 | 15min | 3 tasks | 5 files |
 | Phase 02 P01 | 3min | 2 tasks | 2 files |
+| Phase 02 P03 | 8min | 1 tasks | 2 files |
 
 ## Last Session
 
-**Stopped at:** Completed 02-01-PLAN.md
+**Stopped at:** Completed 02-03-PLAN.md
 **Timestamp:** 2026-03-06T16:15:00Z
 
 ## Next Action
