@@ -3,7 +3,7 @@
 import { ImageFormat, FORMAT_LABELS, QUALITY_FORMATS, ConvertOptions } from "@/types/client";
 
 interface ConvertOptionsProps {
-  sourceFormat: ImageFormat;
+  sourceFormat: ImageFormat | null;
   options: ConvertOptions;
   onChange: (options: ConvertOptions) => void;
 }
@@ -29,7 +29,7 @@ export default function ConvertOptionsPanel({ sourceFormat, options, onChange }:
               className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
                 options.targetFormat === fmt
                   ? "bg-blue-600 text-white border-blue-600"
-                  : fmt === sourceFormat
+                  : fmt === sourceFormat && sourceFormat !== null
                   ? "bg-neutral-100 text-neutral-400 border-neutral-200 cursor-default"
                   : "bg-white text-neutral-700 border-neutral-300 hover:border-blue-400 hover:text-blue-600"
               }`}
