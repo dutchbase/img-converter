@@ -1,26 +1,19 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { ImageFormat, ConvertOptions, ConvertResult, detectFormatFromMime } from "@/types/client";
+import pLimit from "p-limit";
+import { ConvertOptions, BatchItem, BatchStatus } from "@/types/client";
 import DropZone from "./DropZone";
-import ImagePreview from "./ImagePreview";
 import ConvertOptionsPanel from "./ConvertOptions";
-import ConvertResultPanel from "./ConvertResult";
-
-const DEFAULT_OPTIONS: ConvertOptions = {
-  targetFormat: "webp",
-  quality: 85,
-  resizeWidth: null,
-  resizeHeight: null,
-  maintainAspectRatio: true,
-  removeMetadata: false,
-};
+import BatchQueue from "./BatchQueue";
 
 /**
  * REQ-106: Detect animated GIF client-side via magic bytes and GCE marker count.
  * Pure synchronous function operating on bytes (not File, not async) — directly testable.
  * Returns true when buffer starts with GIF8 magic bytes AND contains more than one
  * Graphic Control Extension (0x21 0xF9) marker.
+ *
+ * Exported here for backward-compatibility with Phase 1 test stubs.
  */
 export function isAnimatedGif(bytes: Uint8Array): boolean {
   // Must start with GIF magic bytes (GIF8)
@@ -39,153 +32,193 @@ export function isAnimatedGif(bytes: Uint8Array): boolean {
   return false;
 }
 
-export default function ImageConverter() {
-  const [file, setFile] = useState<File | null>(null);
-  const [sourceFormat, setSourceFormat] = useState<ImageFormat | null>(null);
-  const [options, setOptions] = useState<ConvertOptions>(DEFAULT_OPTIONS);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<ConvertResult | null>(null);
-  // REQ-106: Track animated GIF state to show warning banner
-  const [isAnimatedGifFile, setIsAnimatedGifFile] = useState(false);
+const DEFAULT_OPTIONS: ConvertOptions = {
+  targetFormat: "webp",
+  quality: 85,
+  resizeWidth: null,
+  resizeHeight: null,
+  maintainAspectRatio: true,
+  removeMetadata: false,
+};
 
-  const handleFileSelect = useCallback(async (selectedFile: File, format: ImageFormat) => {
-    setFile(selectedFile);
-    setSourceFormat(format);
-    setResult(null);
-    setError(null);
-    // Default to a different format than the source
-    setOptions((prev) => ({
-      ...prev,
-      targetFormat: format === "webp" ? "jpeg" : "webp",
+async function convertSingleItem(
+  item: BatchItem,
+  options: ConvertOptions
+): Promise<{ blob: Blob; filename: string; sizeBytes: number }> {
+  const formData = new FormData();
+  formData.append("file", item.file);
+  formData.append("targetFormat", options.targetFormat);
+  formData.append("quality", options.quality.toString());
+  formData.append("maintainAspectRatio", options.maintainAspectRatio.toString());
+  formData.append("removeMetadata", options.removeMetadata.toString());
+  if (options.resizeWidth) formData.append("resizeWidth", options.resizeWidth.toString());
+  if (options.resizeHeight) formData.append("resizeHeight", options.resizeHeight.toString());
+  if (options.allowUpscaling) formData.append("allowUpscaling", "true");
+
+  const res = await fetch("/api/convert", { method: "POST", body: formData });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({ message: "Conversion failed" }));
+    throw new Error(data.message ?? "Conversion failed");
+  }
+
+  const blob = await res.blob();
+  const filename = res.headers.get("X-Output-Filename") ?? `converted.${options.targetFormat}`;
+  const sizeBytes = parseInt(res.headers.get("X-Output-Size") ?? blob.size.toString(), 10);
+
+  return { blob, filename, sizeBytes };
+}
+
+export default function ImageConverter() {
+  const [batchItems, setBatchItems] = useState<BatchItem[]>([]);
+  const [options, setOptions] = useState<ConvertOptions>(DEFAULT_OPTIONS);
+  const [isConverting, setIsConverting] = useState(false);
+
+  const handleFilesSelect = useCallback((files: File[]) => {
+    const newItems: BatchItem[] = files.map((file) => ({
+      id: crypto.randomUUID(),
+      file,
+      status: "pending" as BatchStatus,
+      originalSize: file.size,
     }));
-    // REQ-106: Detect animated GIF client-side
-    if (format === "gif") {
-      const slice = await selectedFile.slice(0, 65536).arrayBuffer();
-      setIsAnimatedGifFile(isAnimatedGif(new Uint8Array(slice)));
-    } else {
-      setIsAnimatedGifFile(false);
-    }
+    setBatchItems((prev) => [...prev, ...newItems]);
   }, []);
 
-  // Adapter: DropZone now calls onFilesSelect with an array — pick first file for single-mode
-  const handleFilesSelect = useCallback(
-    (files: File[]) => {
-      if (files.length === 0) return;
-      const first = files[0];
-      const fmt = detectFormatFromMime(first.type);
-      if (fmt) handleFileSelect(first, fmt);
+  const handleRemoveItem = useCallback((id: string) => {
+    setBatchItems((prev) => prev.filter((item) => item.id !== id || item.status !== "pending"));
+  }, []);
+
+  const handleConvertAll = useCallback(async () => {
+    if (isConverting || batchItems.length === 0) return;
+    setIsConverting(true);
+
+    const limit = pLimit(4);
+    const pendingItems = batchItems.filter((i) => i.status === "pending");
+    const currentOptions = options; // snapshot options at click time
+
+    const tasks = pendingItems.map((item) =>
+      limit(async () => {
+        setBatchItems((prev) =>
+          prev.map((i) => (i.id === item.id ? { ...i, status: "converting" as BatchStatus } : i))
+        );
+        try {
+          const { blob, filename, sizeBytes } = await convertSingleItem(item, currentOptions);
+          const url = URL.createObjectURL(blob);
+          setBatchItems((prev) =>
+            prev.map((i) =>
+              i.id === item.id
+                ? { ...i, status: "done" as BatchStatus, result: { url, blob, filename, sizeBytes } }
+                : i
+            )
+          );
+        } catch (err) {
+          const message = err instanceof Error ? err.message : "Conversion failed";
+          setBatchItems((prev) =>
+            prev.map((i) => (i.id === item.id ? { ...i, status: "error" as BatchStatus, error: message } : i))
+          );
+        }
+      })
+    );
+
+    await Promise.allSettled(tasks);
+    setIsConverting(false);
+  }, [isConverting, batchItems, options]);
+
+  const handleRetryItem = useCallback(
+    async (id: string) => {
+      const item = batchItems.find((i) => i.id === id);
+      if (!item || item.status !== "error") return;
+      const currentOptions = options;
+
+      setBatchItems((prev) =>
+        prev.map((i) => (i.id === id ? { ...i, status: "converting" as BatchStatus, error: undefined } : i))
+      );
+
+      try {
+        const { blob, filename, sizeBytes } = await convertSingleItem(item, currentOptions);
+        const url = URL.createObjectURL(blob);
+        setBatchItems((prev) =>
+          prev.map((i) =>
+            i.id === id
+              ? { ...i, status: "done" as BatchStatus, result: { url, blob, filename, sizeBytes } }
+              : i
+          )
+        );
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Conversion failed";
+        setBatchItems((prev) =>
+          prev.map((i) => (i.id === id ? { ...i, status: "error" as BatchStatus, error: message } : i))
+        );
+      }
     },
-    [handleFileSelect]
+    [batchItems, options]
   );
 
-  const handleClear = useCallback(() => {
-    if (result?.url) URL.revokeObjectURL(result.url);
-    setFile(null);
-    setSourceFormat(null);
-    setResult(null);
-    setError(null);
-    setIsAnimatedGifFile(false);
-  }, [result]);
+  const handleClearQueue = useCallback(() => {
+    batchItems.forEach((item) => {
+      if (item.result?.url) URL.revokeObjectURL(item.result.url);
+    });
+    setBatchItems([]);
+  }, [batchItems]);
 
-  const handleConvert = useCallback(async () => {
-    if (!file) return;
-
-    setLoading(true);
-    setError(null);
-    setResult(null);
-
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("targetFormat", options.targetFormat);
-      formData.append("quality", options.quality.toString());
-      formData.append("maintainAspectRatio", options.maintainAspectRatio.toString());
-      formData.append("removeMetadata", options.removeMetadata.toString());
-      if (options.resizeWidth) formData.append("resizeWidth", options.resizeWidth.toString());
-      if (options.resizeHeight) formData.append("resizeHeight", options.resizeHeight.toString());
-      if (options.allowUpscaling) formData.append("allowUpscaling", "true");
-
-      const res = await fetch("/api/convert", { method: "POST", body: formData });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({ error: "Conversion failed" }));
-        throw new Error(data.error ?? "Conversion failed");
-      }
-
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const filename = res.headers.get("X-Output-Filename") ?? `converted.${options.targetFormat}`;
-      const sizeBytes = parseInt(res.headers.get("X-Output-Size") ?? blob.size.toString(), 10);
-
-      setResult({ url, filename, format: options.targetFormat, sizeBytes });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
-    } finally {
-      setLoading(false);
-    }
-  }, [file, options]);
+  const allDone =
+    batchItems.length > 0 && batchItems.every((i) => i.status === "done" || i.status === "error");
+  const doneOrErrorCount = batchItems.filter((i) => i.status === "done" || i.status === "error").length;
+  const convertButtonText = isConverting
+    ? `${doneOrErrorCount}/${batchItems.length} converting...`
+    : "Convert All";
 
   return (
     <div className="w-full max-w-2xl mx-auto flex flex-col gap-6">
-      {!file ? (
-        <DropZone onFilesSelect={handleFilesSelect} />
-      ) : (
-        <>
-          <ImagePreview file={file} sourceFormat={sourceFormat!} onClear={handleClear} />
+      {/* Drop zone — locked during conversion (REQ-201, locked decision) */}
+      <DropZone onFilesSelect={handleFilesSelect} disabled={isConverting} />
 
-          {/* REQ-106: Amber warning banner for animated GIFs */}
-          {isAnimatedGifFile && (
-            <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-              <svg className="w-5 h-5 text-amber-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-              </svg>
-              <p className="text-sm text-amber-700">
-                Animated GIF — only the first frame will be converted.
-              </p>
-            </div>
-          )}
+      {/* Shared conversion options — always visible when files present (REQ-202) */}
+      {batchItems.length > 0 && (
+        <ConvertOptionsPanel
+          sourceFormat={null}
+          options={options}
+          onChange={setOptions}
+        />
+      )}
 
-          {!result ? (
-            <>
-              <ConvertOptionsPanel
-                sourceFormat={sourceFormat!}
-                options={options}
-                onChange={setOptions}
-              />
+      {/* Batch queue — file rows with status (REQ-203) */}
+      {batchItems.length > 0 && (
+        <BatchQueue
+          items={batchItems}
+          onRemoveItem={handleRemoveItem}
+          onRetryItem={handleRetryItem}
+          isConverting={isConverting}
+        />
+      )}
 
-              {error && (
-                <p className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
-                  {error}
-                </p>
+      {/* Convert All + Clear queue buttons */}
+      {batchItems.length > 0 && (
+        <div className="flex flex-col gap-3">
+          {!allDone && (
+            <button
+              onClick={handleConvertAll}
+              disabled={isConverting || batchItems.filter((i) => i.status === "pending").length === 0}
+              className="w-full rounded-xl bg-blue-600 text-white font-semibold px-6 py-3.5 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+            >
+              {isConverting && (
+                <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                </svg>
               )}
-
-              <button
-                onClick={handleConvert}
-                disabled={loading}
-                className="w-full rounded-xl bg-blue-600 text-white font-semibold px-6 py-3.5 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-              >
-                {loading ? (
-                  <>
-                    <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-                    </svg>
-                    Converting...
-                  </>
-                ) : (
-                  "Convert Image"
-                )}
-              </button>
-            </>
-          ) : (
-            <ConvertResultPanel
-              result={result}
-              originalSize={file.size}
-              onConvertAnother={handleClear}
-            />
+              {convertButtonText}
+            </button>
           )}
-        </>
+          {allDone && (
+            <button
+              onClick={handleClearQueue}
+              className="w-full rounded-xl border border-neutral-300 text-neutral-700 font-semibold px-6 py-3.5 hover:bg-neutral-50 transition-colors"
+            >
+              Clear queue
+            </button>
+          )}
+        </div>
       )}
     </div>
   );
