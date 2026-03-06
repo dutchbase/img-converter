@@ -7,8 +7,8 @@ describe("POST /api/convert — REQ-102: filename sanitization", () => {
 
   it("strips path traversal characters from filename", () => {
     const result = sanitizeFilename("photo../../../etc", "jpg");
-    // slashes stripped, dots and alphanumeric kept
-    expect(result).toBe("photo....etc.jpg");
+    // slashes stripped, dots and alphanumeric kept: "photo.."+".."+".."+etc = photo......etc
+    expect(result).toBe("photo......etc.jpg");
   });
 
   it("strips spaces and special characters", () => {
