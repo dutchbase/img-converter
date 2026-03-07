@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 current_plan: Not started
 status: planning
-stopped_at: Completed 04-03-PLAN.md — CLI pure helpers (cli/helpers.ts + 26 passing tests)
-last_updated: "2026-03-07T09:49:01.524Z"
+stopped_at: Completed 04-04-PLAN.md — CLI entry point cli/index.ts (Commander, pipe mode, batch, p-limit)
+last_updated: "2026-03-07T09:51:53.741Z"
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 19
-  completed_plans: 17
+  completed_plans: 18
 ---
 
 # Project State
@@ -107,6 +107,9 @@ progress:
 - [Phase 04]: isPipeMode accepts isTTY as boolean|undefined to match process.stdin.isTTY type
 - [Phase 04]: Commander --no-metadata negation inversion: opts.metadata===false maps to removeMetadata:true
 - [Phase 04]: CLI helpers import from @/types/index (server-safe) not @/types/client
+- [Phase 04-cli-tool]: program.parseAsync() used without await at module top-level for CommonJS compatibility
+- [Phase 04-cli-tool]: Format validation placed in action body checking OUTPUT_FORMATS array at runtime (not parseArg callback)
+- [Phase 04-cli-tool]: Per-file errors written to stdout (not stderr) so log consumers see them inline with success lines
 
 ## Performance Metrics
 
@@ -129,10 +132,11 @@ progress:
 | Phase 04-cli-tool P02 | 5min | 2 tasks | 3 files |
 | Phase 04 P01 | 5 | 2 tasks | 3 files |
 | Phase 04 P03 | 3min | 2 tasks | 2 files |
+| Phase 04-cli-tool P04 | 5min | 2 tasks | 1 files |
 
 ## Last Session
 
-**Stopped at:** Completed 04-03-PLAN.md — CLI pure helpers (cli/helpers.ts + 26 passing tests)
+**Stopped at:** Completed 04-04-PLAN.md — CLI entry point cli/index.ts (Commander, pipe mode, batch, p-limit)
 **Timestamp:** 2026-03-07T09:00:00Z
 
 ## Next Action
