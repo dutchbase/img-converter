@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 current_plan: Not started
 status: planning
-stopped_at: Completed 04-04-PLAN.md — CLI entry point cli/index.ts (Commander, pipe mode, batch, p-limit)
-last_updated: "2026-03-07T09:51:53.741Z"
+stopped_at: "Completed 04-05 Task 1 (build:cli); awaiting human verification checkpoint (Task 2)"
+last_updated: "2026-03-07T09:55:33.036Z"
 progress:
   total_phases: 5
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 19
-  completed_plans: 18
+  completed_plans: 19
 ---
 
 # Project State
@@ -110,6 +110,8 @@ progress:
 - [Phase 04-cli-tool]: program.parseAsync() used without await at module top-level for CommonJS compatibility
 - [Phase 04-cli-tool]: Format validation placed in action body checking OUTPUT_FORMATS array at runtime (not parseArg callback)
 - [Phase 04-cli-tool]: Per-file errors written to stdout (not stderr) so log consumers see them inline with success lines
+- [Phase 04-cli-tool]: tsc-alias chosen to resolve @/ path aliases in compiled CLI JS output — zero config beyond existing tsconfig.cli.json paths
+- [Phase 04-cli-tool]: bin field updated to dist/cli/cli/index.js — actual tsc output path with rootDir:. and outDir:dist/cli
 
 ## Performance Metrics
 
@@ -133,10 +135,11 @@ progress:
 | Phase 04 P01 | 5 | 2 tasks | 3 files |
 | Phase 04 P03 | 3min | 2 tasks | 2 files |
 | Phase 04-cli-tool P04 | 5min | 2 tasks | 1 files |
+| Phase 04-cli-tool P05 | 15min | 1 tasks | 2 files |
 
 ## Last Session
 
-**Stopped at:** Completed 04-04-PLAN.md — CLI entry point cli/index.ts (Commander, pipe mode, batch, p-limit)
+**Stopped at:** Completed 04-05 Task 1 (build:cli); awaiting human verification checkpoint (Task 2)
 **Timestamp:** 2026-03-07T09:00:00Z
 
 ## Next Action
