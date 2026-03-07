@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 current_plan: Not started
 status: planning
-stopped_at: Completed 04-01-PLAN.md
-last_updated: "2026-03-07T09:47:24.327Z"
+stopped_at: Completed 04-03-PLAN.md — CLI pure helpers (cli/helpers.ts + 26 passing tests)
+last_updated: "2026-03-07T09:49:01.524Z"
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 19
-  completed_plans: 16
+  completed_plans: 17
 ---
 
 # Project State
@@ -104,6 +104,9 @@ progress:
 - [Phase 04-cli-tool]: paths re-declared in tsconfig.cli.json because extends does not inherit paths when outDir/rootDir change
 - [Phase 04]: glob CJS mock exports async glob and sync globSync stubs returning empty arrays — matches glob v10 API shape without the real package
 - [Phase 04]: cli.test.ts Wave 0 uses zero top-level imports from unimplemented modules — same batchQueue.test.ts pattern from Phase 2
+- [Phase 04]: isPipeMode accepts isTTY as boolean|undefined to match process.stdin.isTTY type
+- [Phase 04]: Commander --no-metadata negation inversion: opts.metadata===false maps to removeMetadata:true
+- [Phase 04]: CLI helpers import from @/types/index (server-safe) not @/types/client
 
 ## Performance Metrics
 
@@ -125,10 +128,11 @@ progress:
 | 03    | 04   | 15min    | 3     | 3     |
 | Phase 04-cli-tool P02 | 5min | 2 tasks | 3 files |
 | Phase 04 P01 | 5 | 2 tasks | 3 files |
+| Phase 04 P03 | 3min | 2 tasks | 2 files |
 
 ## Last Session
 
-**Stopped at:** Completed 04-01-PLAN.md
+**Stopped at:** Completed 04-03-PLAN.md — CLI pure helpers (cli/helpers.ts + 26 passing tests)
 **Timestamp:** 2026-03-07T09:00:00Z
 
 ## Next Action
