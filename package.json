@@ -2,9 +2,13 @@
   "name": "image-converter",
   "version": "0.1.0",
   "private": true,
+  "bin": {
+    "img-convert": "./dist/cli/index.js"
+  },
   "scripts": {
     "dev": "next dev --port 3100",
     "build": "next build",
+    "build:cli": "tsc --project tsconfig.cli.json && chmod +x dist/cli/index.js",
     "start": "next start",
     "lint": "eslint",
     "test": "jest"
@@ -12,6 +16,7 @@
   "dependencies": {
     "async-sema": "^3.1.1",
     "client-zip": "^2.5.0",
+    "commander": "^14.0.3",
     "file-type": "^21.3.0",
     "heic-convert": "^2.1.0",
     "next": "16.1.6",
