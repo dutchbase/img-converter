@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 current_plan: Not started
 status: planning
-stopped_at: Completed 03-03-PLAN.md
-last_updated: "2026-03-07T08:40:24.977Z"
+stopped_at: Completed 03-02-PLAN.md
+last_updated: "2026-03-07T08:41:17.269Z"
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 14
-  completed_plans: 12
+  completed_plans: 13
 ---
 
 # Project State
@@ -92,6 +92,10 @@ progress:
 - [Phase 03]: Wave 0 heicDecoder stubs omit module-level imports (batchQueue.test.ts pattern) to avoid resolution errors before lib/heicDecoder.ts exists
 - [Phase 03]: detectFormatFromMime accepts optional filename param for extension fallback — Firefox reports HEIC as application/octet-stream
 - [Phase 03]: OUTPUT_FORMATS re-exported from types/client to keep import paths consistent and enforce HEIC exclusion from output selector
+- [Phase 03]: heic-convert quality:1 for intermediate JPEG avoids double lossy compression — Sharp applies final quality
+- [Phase 03]: convert.all() used instead of convert() to detect multi-frame HEIC before processing first frame
+- [Phase 03]: Named error (err.name = LIVE_PHOTO_ERROR_CODE) enables discriminated catch in route without importing heicDecoder constants
+- [Phase 03]: FAKE_JPEG ArrayBuffer in test uses Uint8Array.buffer.slice() to create properly aligned ArrayBuffer (avoids Node pool byteOffset issue)
 
 ## Performance Metrics
 
@@ -109,10 +113,11 @@ progress:
 | 02    | 06   | 25min    | 2     | 3     |
 | Phase 03 P01 | 8min | 2 tasks | 2 files |
 | Phase 03 P03 | 12min | 2 tasks | 4 files |
+| Phase 03 P02 | 4min | 2 tasks | 8 files |
 
 ## Last Session
 
-**Stopped at:** Completed 03-03-PLAN.md
+**Stopped at:** Completed 03-02-PLAN.md
 **Timestamp:** 2026-03-06T20:30:00Z
 
 ## Next Action
