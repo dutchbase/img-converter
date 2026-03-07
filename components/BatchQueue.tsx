@@ -3,6 +3,18 @@
 import { downloadZip } from "client-zip";
 import { BatchItem } from "@/types/client";
 
+/**
+ * Returns true when the Retry button should be rendered for a batch item.
+ * Suppresses Retry for LIVE_PHOTO_NOT_SUPPORTED — retrying always fails for Live Photos.
+ * Only items in "error" status are eligible; all other statuses return false.
+ *
+ * Exported as a pure function for unit testability (REQ-303).
+ */
+export function shouldShowRetry(item: BatchItem): boolean {
+  if (item.status !== "error") return false;
+  return item.errorCode !== "LIVE_PHOTO_NOT_SUPPORTED";
+}
+
 interface BatchQueueProps {
   items: BatchItem[];
   onRemoveItem: (id: string) => void;
@@ -158,8 +170,8 @@ export default function BatchQueue({
                   </a>
                 )}
 
-                {/* Retry button — error only */}
-                {item.status === "error" && (
+                {/* Retry button — error only, suppressed for LIVE_PHOTO_NOT_SUPPORTED */}
+                {shouldShowRetry(item) && (
                   <button
                     onClick={() => onRetryItem(item.id)}
                     className="text-xs font-medium text-red-600 hover:text-red-800 transition-colors"

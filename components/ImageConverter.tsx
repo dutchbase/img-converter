@@ -41,6 +41,20 @@ const DEFAULT_OPTIONS: ConvertOptions = {
   removeMetadata: false,
 };
 
+/**
+ * Typed conversion error that carries both the human-readable message and the
+ * machine-readable error code returned by the API (e.g. "LIVE_PHOTO_NOT_SUPPORTED").
+ * Stored on BatchItem so BatchQueue can apply conditional rendering rules (REQ-303).
+ */
+class ConversionError extends Error {
+  readonly errorCode: string | undefined;
+  constructor(message: string, errorCode?: string) {
+    super(message);
+    this.name = "ConversionError";
+    this.errorCode = errorCode;
+  }
+}
+
 async function convertSingleItem(
   item: BatchItem,
   options: ConvertOptions
@@ -59,7 +73,7 @@ async function convertSingleItem(
 
   if (!res.ok) {
     const data = await res.json().catch(() => ({ message: "Conversion failed" }));
-    throw new Error(data.message ?? "Conversion failed");
+    throw new ConversionError(data.message ?? "Conversion failed", data.error);
   }
 
   const blob = await res.blob();
@@ -113,8 +127,11 @@ export default function ImageConverter() {
           );
         } catch (err) {
           const message = err instanceof Error ? err.message : "Conversion failed";
+          const errorCode = err instanceof ConversionError ? err.errorCode : undefined;
           setBatchItems((prev) =>
-            prev.map((i) => (i.id === item.id ? { ...i, status: "error" as BatchStatus, error: message } : i))
+            prev.map((i) =>
+              i.id === item.id ? { ...i, status: "error" as BatchStatus, error: message, errorCode } : i
+            )
           );
         }
       })
@@ -131,7 +148,9 @@ export default function ImageConverter() {
       const currentOptions = options;
 
       setBatchItems((prev) =>
-        prev.map((i) => (i.id === id ? { ...i, status: "converting" as BatchStatus, error: undefined } : i))
+        prev.map((i) =>
+          i.id === id ? { ...i, status: "converting" as BatchStatus, error: undefined, errorCode: undefined } : i
+        )
       );
 
       try {
@@ -146,8 +165,11 @@ export default function ImageConverter() {
         );
       } catch (err) {
         const message = err instanceof Error ? err.message : "Conversion failed";
+        const errorCode = err instanceof ConversionError ? err.errorCode : undefined;
         setBatchItems((prev) =>
-          prev.map((i) => (i.id === id ? { ...i, status: "error" as BatchStatus, error: message } : i))
+          prev.map((i) =>
+            i.id === id ? { ...i, status: "error" as BatchStatus, error: message, errorCode } : i
+          )
         );
       }
     },
