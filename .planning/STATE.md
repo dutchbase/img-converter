@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 current_plan: Not started
 status: planning
-stopped_at: Completed 03-01-PLAN.md
-last_updated: "2026-03-07T08:35:16.596Z"
+stopped_at: Completed 03-03-PLAN.md
+last_updated: "2026-03-07T08:40:24.977Z"
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 14
-  completed_plans: 11
+  completed_plans: 12
 ---
 
 # Project State
@@ -90,6 +90,8 @@ progress:
 - [Phase 03]: heic-convert jest.mock() removed from Wave 0 stub test — package not yet installed; added in Plan 03-02
 - [Phase 03]: OUTPUT_FORMATS and INPUT_ONLY_FORMATS constants encode Sharp encoding limitations as explicit type-system invariants
 - [Phase 03]: Wave 0 heicDecoder stubs omit module-level imports (batchQueue.test.ts pattern) to avoid resolution errors before lib/heicDecoder.ts exists
+- [Phase 03]: detectFormatFromMime accepts optional filename param for extension fallback — Firefox reports HEIC as application/octet-stream
+- [Phase 03]: OUTPUT_FORMATS re-exported from types/client to keep import paths consistent and enforce HEIC exclusion from output selector
 
 ## Performance Metrics
 
@@ -106,10 +108,11 @@ progress:
 | Phase 02 P04 | 8min | 2 tasks | 2 files |
 | 02    | 06   | 25min    | 2     | 3     |
 | Phase 03 P01 | 8min | 2 tasks | 2 files |
+| Phase 03 P03 | 12min | 2 tasks | 4 files |
 
 ## Last Session
 
-**Stopped at:** Completed 03-01-PLAN.md
+**Stopped at:** Completed 03-03-PLAN.md
 **Timestamp:** 2026-03-06T20:30:00Z
 
 ## Next Action
