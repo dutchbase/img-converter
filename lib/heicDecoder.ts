@@ -17,7 +17,7 @@ export const LIVE_PHOTO_ERROR_CODE = "LIVE_PHOTO_NOT_SUPPORTED";
  */
 export async function decodeHeicToBuffer(inputBuffer: Buffer): Promise<Buffer> {
   const images = await convert.all({
-    buffer: inputBuffer,
+    buffer: inputBuffer.buffer as ArrayBuffer,
     format: "JPEG",
     quality: 1,
   });
