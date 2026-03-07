@@ -10,6 +10,7 @@ const config: Config = {
     // map to hand-rolled CJS mocks under __mocks__/
     "^p-limit$": "<rootDir>/__mocks__/p-limit.js",
     "^client-zip$": "<rootDir>/__mocks__/client-zip.js",
+    "^file-type$": "<rootDir>/__mocks__/file-type.js",
   },
   transform: {
     "^.+\\.tsx?$": ["ts-jest", { tsconfig: { esModuleInterop: true } }],

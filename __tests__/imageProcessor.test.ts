@@ -1,7 +1,7 @@
 import sharp from "sharp";
 import path from "path";
 import fs from "fs";
-import { processImage } from "@/lib/imageProcessor";
+import { processImage, detectFormat } from "@/lib/imageProcessor";
 import { ConvertOptions } from "@/types";
 
 const FIXTURES = path.join(__dirname, "fixtures");
@@ -130,6 +130,13 @@ describe("processImage — REQ-105: AVIF effort cap", () => {
 
     avifSpy.mockRestore();
   });
+});
+
+describe("detectFormat — REQ-301: HEIC/HEIF MIME variants", () => {
+  it("maps image/heic to heic", () => expect(detectFormat("image/heic")).toBe("heic"));
+  it("maps image/heif to heic", () => expect(detectFormat("image/heif")).toBe("heic"));
+  it("maps image/heic-sequence to heic", () => expect(detectFormat("image/heic-sequence")).toBe("heic"));
+  it("maps image/heif-sequence to heic", () => expect(detectFormat("image/heif-sequence")).toBe("heic"));
 });
 
 describe("processImage — REQ-107: upscaling prevention", () => {

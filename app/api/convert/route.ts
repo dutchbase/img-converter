@@ -105,7 +105,21 @@ export async function POST(req: NextRequest) {
     await processingQueue.acquire();
     let outputBuffer: Buffer;
     try {
-      outputBuffer = await processImage(inputBuffer, options);
+      outputBuffer = await processImage(inputBuffer, options, sourceFormat ?? undefined);
+    } catch (processErr) {
+      if (
+        processErr instanceof Error &&
+        processErr.name === "LIVE_PHOTO_NOT_SUPPORTED"
+      ) {
+        return NextResponse.json(
+          {
+            error: "LIVE_PHOTO_NOT_SUPPORTED",
+            message: "Live Photo detected — only still frames are supported.",
+          },
+          { status: 422 }
+        );
+      }
+      throw processErr;
     } finally {
       processingQueue.release();
     }

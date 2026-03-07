@@ -1,4 +1,58 @@
-import { sanitizeFilename } from "@/app/api/convert/route";
+import { sanitizeFilename, POST } from "@/app/api/convert/route";
+import { NextRequest } from "next/server";
+
+jest.mock("@/lib/imageProcessor", () => ({
+  processImage: jest.fn(),
+  detectFormat: jest.fn(),
+}));
+jest.mock("@/lib/processingQueue", () => ({
+  processingQueue: { acquire: jest.fn(), release: jest.fn() },
+}));
+jest.mock("sharp", () => {
+  const mockSharp = jest.fn(() => ({
+    metadata: jest.fn().mockResolvedValue({ width: 100, height: 100 }),
+  }));
+  return mockSharp;
+});
+
+import { processImage, detectFormat } from "@/lib/imageProcessor";
+import { fileTypeFromBuffer } from "file-type";
+
+function makeHeicRequest(): NextRequest {
+  const formData = new FormData();
+  const fakeBytes = new Uint8Array([0x00, 0x00, 0x00, 0x18]);
+  const file = new File([fakeBytes], "photo.heic", { type: "image/heic" });
+  formData.append("file", file);
+  formData.append("targetFormat", "jpeg");
+  formData.append("quality", "85");
+  formData.append("maintainAspectRatio", "true");
+  formData.append("removeMetadata", "false");
+  return new NextRequest("http://localhost/api/convert", {
+    method: "POST",
+    body: formData,
+  });
+}
+
+describe("POST /api/convert — REQ-302: Live Photo 422 rejection", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (detectFormat as jest.Mock).mockReturnValue("heic");
+    (fileTypeFromBuffer as jest.Mock).mockResolvedValue({ mime: "image/heic", ext: "heic" });
+  });
+
+  it("returns 422 LIVE_PHOTO_NOT_SUPPORTED for Live Photo HEIC", async () => {
+    const livePhotoErr = new Error("LIVE_PHOTO_NOT_SUPPORTED");
+    livePhotoErr.name = "LIVE_PHOTO_NOT_SUPPORTED";
+    (processImage as jest.Mock).mockRejectedValueOnce(livePhotoErr);
+
+    const req = makeHeicRequest();
+    const res = await POST(req);
+    expect(res.status).toBe(422);
+    const body = await res.json();
+    expect(body.error).toBe("LIVE_PHOTO_NOT_SUPPORTED");
+    expect(body.message).toBe("Live Photo detected — only still frames are supported.");
+  });
+});
 
 describe("POST /api/convert — REQ-102: filename sanitization", () => {
   it("keeps safe characters unchanged", () => {
