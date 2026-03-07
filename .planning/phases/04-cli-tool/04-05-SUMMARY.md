@@ -50,14 +50,14 @@ completed: 2026-03-07
 
 # Phase 4 Plan 05: CLI Build and Verification Summary
 
-**CLI TypeScript build fixed with tsc-alias path alias rewriting; dist/cli/cli/index.js compiles, runs, and passes end-to-end smoke test — awaiting human verification checkpoint**
+**CLI TypeScript build fixed with tsc-alias path alias rewriting; all 7 end-to-end smoke tests approved by human — Phase 4 CLI tool complete**
 
 ## Performance
 
-- **Duration:** 15 min
+- **Duration:** 20 min
 - **Started:** 2026-03-07T10:50:00Z
-- **Completed:** 2026-03-07T11:05:00Z
-- **Tasks:** 1 complete, 1 awaiting human verification
+- **Completed:** 2026-03-07T11:10:00Z
+- **Tasks:** 2 complete (1 auto + 1 human-verify)
 - **Files modified:** 2
 
 ## Accomplishments
@@ -68,10 +68,12 @@ completed: 2026-03-07
 - `npm run build:cli` exits 0, dist/cli/cli/index.js has correct shebang, `--help` prints full usage
 - End-to-end smoke test: `node dist/cli/cli/index.js -f webp -o /tmp/cli-test-smoke __tests__/fixtures/small.png` converts successfully
 - All 8 test suites (75 tests) remain green
+- Human verification: all 7 smoke test scenarios confirmed — help output, missing format error, unknown format validation, unmatched glob warning, real conversion, pipe mode, and full test suite all approved
 
 ## Task Commits
 
 1. **Task 1: Build CLI and run full test suite** - `3581fd1` (fix) — tsc-alias install, build:cli fix, bin path fix
+2. **Task 2: Human verify — CLI end-to-end smoke tests** - approved (human-verify) — all 7 scenarios confirmed passing
 
 ## Files Created/Modified
 
@@ -119,9 +121,9 @@ None - no external service configuration required.
 
 ## Next Phase Readiness
 
-- `dist/cli/cli/index.js` is fully functional; awaiting human verification of 7 smoke test scenarios (Task 2 checkpoint)
-- After human approval, Phase 4 is complete
-- Checkpoint verification commands are provided in the checkpoint message
+- Phase 4 (CLI tool) is fully complete — all 5 plans executed and verified
+- `dist/cli/cli/index.js` is a working Node.js binary covering all documented smoke test scenarios
+- Phase 5 (if planned) can proceed; CLI binary is ready for packaging or further distribution work
 
 ---
 *Phase: 04-cli-tool*
