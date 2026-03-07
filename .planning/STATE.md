@@ -4,8 +4,8 @@ milestone: v1.0
 milestone_name: milestone
 current_plan: Not started
 status: planning
-stopped_at: Completed 04-cli-tool 04-02-PLAN.md
-last_updated: "2026-03-07T09:47:16.523Z"
+stopped_at: Completed 04-01-PLAN.md
+last_updated: "2026-03-07T09:47:24.327Z"
 progress:
   total_phases: 5
   completed_phases: 3
@@ -102,6 +102,8 @@ progress:
 - [Phase 04-cli-tool]: tsconfig.cli.json extends root tsconfig, overrides module/moduleResolution/noEmit/outDir/lib/paths only — scoped include to cli/lib/types prevents JSX compilation errors
 - [Phase 04-cli-tool]: lib: [ES2020] in tsconfig.cli.json drops dom/dom.iterable to prevent false type errors in Node.js CLI context
 - [Phase 04-cli-tool]: paths re-declared in tsconfig.cli.json because extends does not inherit paths when outDir/rootDir change
+- [Phase 04]: glob CJS mock exports async glob and sync globSync stubs returning empty arrays — matches glob v10 API shape without the real package
+- [Phase 04]: cli.test.ts Wave 0 uses zero top-level imports from unimplemented modules — same batchQueue.test.ts pattern from Phase 2
 
 ## Performance Metrics
 
@@ -126,7 +128,7 @@ progress:
 
 ## Last Session
 
-**Stopped at:** Completed 04-cli-tool 04-02-PLAN.md
+**Stopped at:** Completed 04-01-PLAN.md
 **Timestamp:** 2026-03-07T09:00:00Z
 
 ## Next Action
