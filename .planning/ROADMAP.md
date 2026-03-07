@@ -222,10 +222,10 @@ npm install --save-dev @types/heic-convert
 **Plans**: 4 plans
 
 Plans:
-- [ ] 03-01-PLAN.md — Type system foundation: ImageFormat union, OUTPUT_FORMATS, INPUT_ONLY_FORMATS, BatchItem.errorCode, Wave 0 heicDecoder test stubs
-- [ ] 03-02-PLAN.md — Server-side HEIC decode: lib/heicDecoder.ts, processImage() integration, detectFormat() HEIC variants, route.ts Live Photo 422 catch
-- [ ] 03-03-PLAN.md — Client-side MIME + UI: detectFormatFromMime() HEIC entries + extension fallback, DropZone accept attribute, ConvertOptions OUTPUT_FORMATS
-- [ ] 03-04-PLAN.md — Batch queue + human verify: BatchQueue Retry suppression for LIVE_PHOTO_NOT_SUPPORTED, ImageConverter errorCode storage
+- [x] 03-01-PLAN.md — Type system foundation: ImageFormat union, OUTPUT_FORMATS, INPUT_ONLY_FORMATS, BatchItem.errorCode, Wave 0 heicDecoder test stubs
+- [x] 03-02-PLAN.md — Server-side HEIC decode: lib/heicDecoder.ts, processImage() integration, detectFormat() HEIC variants, route.ts Live Photo 422 catch
+- [x] 03-03-PLAN.md — Client-side MIME + UI: detectFormatFromMime() HEIC entries + extension fallback, DropZone accept attribute, ConvertOptions OUTPUT_FORMATS
+- [x] 03-04-PLAN.md — Batch queue + human verify: BatchQueue Retry suppression for LIVE_PHOTO_NOT_SUPPORTED, ImageConverter errorCode storage
 
 ---
 
@@ -357,7 +357,7 @@ npm install --save-dev @types/glob
 |-------|-------------|----------------|--------|-----------|
 | 1. Security & Correctness Hardening | 7/7 | 4/4 Complete   | Complete | 2026-03-06 |
 | 2. Batch Browser UX | 7/7 | 6/6 Complete | Complete | 2026-03-06 |
-| 3. HEIC Input Support | 4/4 | Complete   | 2026-03-07 | - |
+| 3. HEIC Input Support | 3/3 | 4/4 Complete | Complete | 2026-03-07 |
 | 4. CLI Tool | REQ-401 through REQ-406 | 0/? | Not started | - |
 | 5. API Polish & Dark Mode | REQ-501 through REQ-502 | 0/? | Not started | - |
 
