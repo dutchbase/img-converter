@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 current_plan: Not started
 status: planning
-stopped_at: Phase 4 context gathered
-last_updated: "2026-03-07T09:25:49.553Z"
+stopped_at: Completed 04-cli-tool 04-02-PLAN.md
+last_updated: "2026-03-07T09:47:16.523Z"
 progress:
   total_phases: 5
   completed_phases: 3
-  total_plans: 14
-  completed_plans: 14
+  total_plans: 19
+  completed_plans: 16
 ---
 
 # Project State
@@ -99,6 +99,9 @@ progress:
 - [Phase 03]: shouldShowRetry() exported as pure function for node-env testability (no jsdom required)
 - [Phase 03]: ConversionError class carries errorCode through catch blocks — typed errorCode field on extended Error
 - [Phase 03]: errorCode cleared to undefined on retry attempt reset to avoid stale error codes
+- [Phase 04-cli-tool]: tsconfig.cli.json extends root tsconfig, overrides module/moduleResolution/noEmit/outDir/lib/paths only — scoped include to cli/lib/types prevents JSX compilation errors
+- [Phase 04-cli-tool]: lib: [ES2020] in tsconfig.cli.json drops dom/dom.iterable to prevent false type errors in Node.js CLI context
+- [Phase 04-cli-tool]: paths re-declared in tsconfig.cli.json because extends does not inherit paths when outDir/rootDir change
 
 ## Performance Metrics
 
@@ -118,10 +121,12 @@ progress:
 | Phase 03 P03 | 12min | 2 tasks | 4 files |
 | Phase 03 P02 | 4min | 2 tasks | 8 files |
 | 03    | 04   | 15min    | 3     | 3     |
+| Phase 04-cli-tool P02 | 5min | 2 tasks | 3 files |
+| Phase 04 P01 | 5 | 2 tasks | 3 files |
 
 ## Last Session
 
-**Stopped at:** Phase 4 context gathered
+**Stopped at:** Completed 04-cli-tool 04-02-PLAN.md
 **Timestamp:** 2026-03-07T09:00:00Z
 
 ## Next Action
