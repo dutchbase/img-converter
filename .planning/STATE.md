@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 current_plan: Not started
 status: planning
-stopped_at: Phase 3 context gathered
-last_updated: "2026-03-07T08:08:16.155Z"
+stopped_at: Completed 03-01-PLAN.md
+last_updated: "2026-03-07T08:35:16.596Z"
 progress:
   total_phases: 5
   completed_phases: 2
-  total_plans: 10
-  completed_plans: 10
+  total_plans: 14
+  completed_plans: 11
 ---
 
 # Project State
@@ -87,6 +87,9 @@ progress:
 - [Phase 02]: pLimit(4) scoped inside handleConvertAll — prevents stale limit instance across multiple Convert All invocations
 - [Phase 02]: handleRetryItem runs without pLimit — single item retry does not need concurrency limiting
 - [Phase 02]: ESM-only packages (p-limit, client-zip) mocked for Jest via __mocks__/*.js + moduleNameMapper — simpler than transformIgnorePatterns and works with all-todo test stubs
+- [Phase 03]: heic-convert jest.mock() removed from Wave 0 stub test — package not yet installed; added in Plan 03-02
+- [Phase 03]: OUTPUT_FORMATS and INPUT_ONLY_FORMATS constants encode Sharp encoding limitations as explicit type-system invariants
+- [Phase 03]: Wave 0 heicDecoder stubs omit module-level imports (batchQueue.test.ts pattern) to avoid resolution errors before lib/heicDecoder.ts exists
 
 ## Performance Metrics
 
@@ -102,10 +105,11 @@ progress:
 | Phase 02 P05 | 1min | 1 tasks | 1 files |
 | Phase 02 P04 | 8min | 2 tasks | 2 files |
 | 02    | 06   | 25min    | 2     | 3     |
+| Phase 03 P01 | 8min | 2 tasks | 2 files |
 
 ## Last Session
 
-**Stopped at:** Phase 3 context gathered
+**Stopped at:** Completed 03-01-PLAN.md
 **Timestamp:** 2026-03-06T20:30:00Z
 
 ## Next Action
