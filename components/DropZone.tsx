@@ -15,9 +15,9 @@ export default function DropZone({ onFilesSelect, disabled = false }: DropZonePr
   const handleFiles = useCallback(
     (fileList: File[]) => {
       setError(null);
-      const valid = fileList.filter((f) => detectFormatFromMime(f.type) !== null);
+      const valid = fileList.filter((f) => detectFormatFromMime(f.type, f.name) !== null);
       if (valid.length === 0) {
-        setError("No supported images found. Please upload JPG, PNG, WebP, AVIF, GIF, or TIFF files.");
+        setError("No supported images found. Please upload JPG, PNG, WebP, AVIF, GIF, TIFF, or HEIC files.");
         return;
       }
       onFilesSelect(valid);
@@ -62,7 +62,7 @@ export default function DropZone({ onFilesSelect, disabled = false }: DropZonePr
       <input
         type="file"
         multiple
-        accept="image/jpeg,image/png,image/webp,image/avif,image/gif,image/tiff"
+        accept="image/jpeg,image/png,image/webp,image/avif,image/gif,image/tiff,image/heic,image/heif"
         className="absolute inset-0 opacity-0 cursor-pointer"
         onChange={onInputChange}
         disabled={disabled}

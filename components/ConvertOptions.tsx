@@ -1,6 +1,6 @@
 "use client";
 
-import { ImageFormat, FORMAT_LABELS, QUALITY_FORMATS, ConvertOptions } from "@/types/client";
+import { ImageFormat, FORMAT_LABELS, QUALITY_FORMATS, OUTPUT_FORMATS, ConvertOptions } from "@/types/client";
 
 interface ConvertOptionsProps {
   sourceFormat: ImageFormat | null;
@@ -8,7 +8,7 @@ interface ConvertOptionsProps {
   onChange: (options: ConvertOptions) => void;
 }
 
-const ALL_FORMATS: ImageFormat[] = ["jpeg", "png", "webp", "avif", "gif", "tiff"];
+// Output formats only (excludes input-only formats like HEIC — see OUTPUT_FORMATS in types/index.ts)
 
 export default function ConvertOptionsPanel({ sourceFormat, options, onChange }: ConvertOptionsProps) {
   const set = <K extends keyof ConvertOptions>(key: K, value: ConvertOptions[K]) =>
@@ -22,7 +22,7 @@ export default function ConvertOptionsPanel({ sourceFormat, options, onChange }:
       <div>
         <label className="block text-sm font-semibold text-neutral-700 mb-2">Convert to</label>
         <div className="flex flex-wrap gap-2">
-          {ALL_FORMATS.map((fmt) => (
+          {OUTPUT_FORMATS.map((fmt) => (
             <button
               key={fmt}
               onClick={() => set("targetFormat", fmt)}

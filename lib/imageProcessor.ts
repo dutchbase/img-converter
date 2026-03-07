@@ -1,10 +1,17 @@
 import sharp from "sharp";
 import { ImageFormat, ConvertOptions } from "@/types";
+import { decodeHeicToBuffer } from "@/lib/heicDecoder";
 
 export async function processImage(
   buffer: Buffer,
-  options: ConvertOptions
+  options: ConvertOptions,
+  sourceFormat?: ImageFormat
 ): Promise<Buffer> {
+  // HEIC/HEIF pre-decode step — must run before Sharp pipeline (Sharp cannot read HEIC)
+  if (sourceFormat === "heic") {
+    buffer = await decodeHeicToBuffer(buffer);
+  }
+
   // REQ-101: Guard against decompression bombs
   const meta = await sharp(buffer).metadata();
   if ((meta.width ?? 0) * (meta.height ?? 0) > 25_000_000) {
@@ -70,6 +77,10 @@ export function detectFormat(mimeType: string): ImageFormat | null {
     "image/avif": "avif",
     "image/gif": "gif",
     "image/tiff": "tiff",
+    "image/heic": "heic",
+    "image/heif": "heic",
+    "image/heic-sequence": "heic",
+    "image/heif-sequence": "heic",
   };
   return map[mimeType] ?? null;
 }
