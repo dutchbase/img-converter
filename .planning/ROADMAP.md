@@ -272,17 +272,16 @@ Plans:
 
 **Files touched**:
 - `cli/index.ts` — new
+- `cli/helpers.ts` — new (pure helpers extracted for testability)
 - `tsconfig.cli.json` — new
 - `package.json` — `bin` field, `build:cli` script
 - `lib/imageProcessor.ts` — no changes expected (verify API is sufficient)
 
 **New dependencies**:
 ```
-npm install commander glob
-npm install --save-dev @types/glob
+npm install commander
+# glob and p-limit already installed
 ```
-
-(Note: `p-limit` is already installed from Phase 2)
 
 **Success Criteria** (what must be TRUE when this phase is complete):
 
@@ -293,7 +292,14 @@ npm install --save-dev @types/glob
 5. `npm run build:cli` completes without TypeScript errors and produces `dist/cli/index.js`.
 6. The CLI calls `lib/imageProcessor.ts` directly — inspecting `cli/index.ts` confirms zero duplication of Sharp pipeline logic.
 
-**Plans**: TBD
+**Plans**: 5 plans
+
+Plans:
+- [ ] 04-01-PLAN.md — Wave 0 test scaffold: cli.test.ts it.todo() stubs + glob CJS mock
+- [ ] 04-02-PLAN.md — Build infrastructure: tsconfig.cli.json, package.json bin/build:cli, commander install
+- [ ] 04-03-PLAN.md — Pure helpers (TDD): cli/helpers.ts with detectFormatFromExt, buildOutputPath, buildConvertOptions, formatKB, isPipeMode
+- [ ] 04-04-PLAN.md — CLI assembly: cli/index.ts Commander program, pipe mode, batch processing, progress output
+- [ ] 04-05-PLAN.md — Build + human verify: npm run build:cli, --help, real conversion, pipe mode smoke test
 
 ---
 
@@ -358,7 +364,7 @@ npm install --save-dev @types/glob
 | 1. Security & Correctness Hardening | 7/7 | 4/4 Complete   | Complete | 2026-03-06 |
 | 2. Batch Browser UX | 7/7 | 6/6 Complete | Complete | 2026-03-06 |
 | 3. HEIC Input Support | 3/3 | 4/4 Complete | Complete | 2026-03-07 |
-| 4. CLI Tool | REQ-401 through REQ-406 | 0/? | Not started | - |
+| 4. CLI Tool | REQ-401 through REQ-406 | 0/5 | Planning complete | - |
 | 5. API Polish & Dark Mode | REQ-501 through REQ-502 | 0/? | Not started | - |
 
 ---
@@ -410,3 +416,4 @@ npm install --save-dev @types/glob
 | AVIF `speed: 6` fixed (not user-configurable in v1) | Prevents OOM; open question deferred to v2 if users want quality/speed trade-off control |
 | No manual dark mode toggle | Tailwind `darkMode: "media"` with `prefers-color-scheme` is sufficient for a personal tool; reduces UI complexity |
 | HEIC is input-only in the format union | Sharp cannot encode HEIC; exposing it as an output option would be misleading |
+| CLI helpers extracted to cli/helpers.ts | Pure functions are testable in isolation without spawning a process; avoids child-process integration tests |
