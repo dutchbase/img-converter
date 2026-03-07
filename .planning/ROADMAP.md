@@ -219,7 +219,13 @@ npm install --save-dev @types/heic-convert
 3. HEIC files appear in the batch queue alongside JPEG/PNG/WebP files and go through the same status lifecycle (pending, converting, done/error).
 4. HEIC does not appear as an output format option in the format selector — users can only convert FROM HEIC, not TO it.
 
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+- [ ] 03-01-PLAN.md — Type system foundation: ImageFormat union, OUTPUT_FORMATS, INPUT_ONLY_FORMATS, BatchItem.errorCode, Wave 0 heicDecoder test stubs
+- [ ] 03-02-PLAN.md — Server-side HEIC decode: lib/heicDecoder.ts, processImage() integration, detectFormat() HEIC variants, route.ts Live Photo 422 catch
+- [ ] 03-03-PLAN.md — Client-side MIME + UI: detectFormatFromMime() HEIC entries + extension fallback, DropZone accept attribute, ConvertOptions OUTPUT_FORMATS
+- [ ] 03-04-PLAN.md — Batch queue + human verify: BatchQueue Retry suppression for LIVE_PHOTO_NOT_SUPPORTED, ImageConverter errorCode storage
 
 ---
 
