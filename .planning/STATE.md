@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 current_plan: Not started
 status: planning
-stopped_at: Completed 03-02-PLAN.md
-last_updated: "2026-03-07T08:41:17.269Z"
+stopped_at: Completed 03-04 Tasks 1-2, awaiting human verify at Task 3 checkpoint
+last_updated: "2026-03-07T08:45:27.242Z"
 progress:
   total_phases: 5
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 14
-  completed_plans: 13
+  completed_plans: 14
 ---
 
 # Project State
@@ -96,6 +96,9 @@ progress:
 - [Phase 03]: convert.all() used instead of convert() to detect multi-frame HEIC before processing first frame
 - [Phase 03]: Named error (err.name = LIVE_PHOTO_ERROR_CODE) enables discriminated catch in route without importing heicDecoder constants
 - [Phase 03]: FAKE_JPEG ArrayBuffer in test uses Uint8Array.buffer.slice() to create properly aligned ArrayBuffer (avoids Node pool byteOffset issue)
+- [Phase 03]: shouldShowRetry() exported as pure function for node-env testability (no jsdom required)
+- [Phase 03]: ConversionError class carries errorCode through catch blocks — typed errorCode field on extended Error
+- [Phase 03]: errorCode cleared to undefined on retry attempt reset to avoid stale error codes
 
 ## Performance Metrics
 
@@ -117,7 +120,7 @@ progress:
 
 ## Last Session
 
-**Stopped at:** Completed 03-02-PLAN.md
+**Stopped at:** Completed 03-04 Tasks 1-2, awaiting human verify at Task 3 checkpoint
 **Timestamp:** 2026-03-06T20:30:00Z
 
 ## Next Action
