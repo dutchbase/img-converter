@@ -41,29 +41,32 @@ completed: 2026-03-09
 
 # Phase 5 Plan 04: Final Gate Summary
 
-**Full automated suite gate passed (8 suites, 75 tests green, build clean) — awaiting human visual verification of dark mode surfaces and structured API error shapes**
+**Full automated suite gate passed (8 suites, 75 tests green, build clean) + human confirmed dark mode surfaces and structured API error shapes — Phase 5 complete**
 
 ## Performance
 
-- **Duration:** 5 min
+- **Duration:** 10 min
 - **Started:** 2026-03-09T17:13:55Z
-- **Completed:** 2026-03-09T17:18:00Z
-- **Tasks:** 1 of 2 automated (1 checkpoint pending human verify)
+- **Completed:** 2026-03-09T17:23:00Z
+- **Tasks:** 2 of 2 complete
 - **Files modified:** 0
 
 ## Accomplishments
 - All 8 Jest test suites pass (103 total: 75 passing + 28 todo stubs)
 - Next.js production build exits 0 with no TypeScript errors
-- Phase 5 implementation confirmed structurally sound before human sign-off
+- Human verified: all UI panels show dark surfaces in OS dark mode (neutral-950/900/800 backgrounds, neutral-200/400 text)
+- Human verified: light mode unchanged from pre-Phase-5 (no visual regressions)
+- Human verified: API error shapes include `error`, `message`, and `field` fields; FILE_TOO_LARGE returns 413
+- REQ-501 and REQ-502 both confirmed complete
 
 ## Task Commits
 
-No code changes in this plan — Task 1 was a verification-only gate.
+No code changes in this plan — both tasks were verification-only.
 
-1. **Task 1: Full suite gate** - verification only (npm test and npm run build both exit 0)
-2. **Task 2: Human visual verify** - CHECKPOINT (awaiting human approval)
+1. **Task 1: Full suite gate** - `593e5c9` (docs — verification gate commit)
+2. **Task 2: Human visual verify** - Human-approved; no code files modified
 
-**Plan metadata:** pending final docs commit
+**Plan metadata:** (final docs commit follows)
 
 ## Files Created/Modified
 None — this plan is a verification gate only.
@@ -84,9 +87,9 @@ None - no external service configuration required.
 - SUMMARY.md created at `.planning/phases/05-api-polish-dark-mode/05-04-SUMMARY.md` — FOUND
 
 ## Next Phase Readiness
-- Human verification of dark mode and API error shapes is the final gate for Phase 5
-- Once approved, Phase 5 is complete and milestone v1.0 can be closed
-- All automated checks confirmed — no code changes needed before human review
+- Phase 5 is complete. REQ-501 and REQ-502 are both fulfilled and human-verified.
+- All 5 phases of milestone v1.0 (Core Polish + Batch + CLI) are complete.
+- The application ships with: structured API error responses, full dark mode support, HEIC input, batch conversion with ZIP download, and a CLI tool.
 
 ---
 *Phase: 05-api-polish-dark-mode*

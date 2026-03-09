@@ -13,7 +13,7 @@
 - [x] **Phase 2: Batch Browser UX** - Multi-file conversion queue with shared settings and ZIP download (completed 2026-03-06)
 - [x] **Phase 3: HEIC Input Support** - Accept iPhone HEIC/HEIF photos as first-class input (completed 2026-03-07)
 - [x] **Phase 4: CLI Tool** - Command-line `img-convert` tool backed by the existing processor (completed 2026-03-07)
-- [ ] **Phase 5: API Polish & Dark Mode** - Structured error responses and system dark mode
+- [x] **Phase 5: API Polish & Dark Mode** - Structured error responses and system dark mode (completed 2026-03-09)
 
 ---
 
@@ -371,7 +371,7 @@ Plans:
 | 2. Batch Browser UX | 7/7 | 6/6 Complete | Complete | 2026-03-06 |
 | 3. HEIC Input Support | 3/3 | 4/4 Complete | Complete | 2026-03-07 |
 | 4. CLI Tool | 5/5 | Complete   | 2026-03-07 | - |
-| 5. API Polish & Dark Mode | 3/4 | In Progress|  | - |
+| 5. API Polish & Dark Mode | 4/4 | Complete   | 2026-03-09 | - |
 
 ---
 

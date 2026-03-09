@@ -4,8 +4,8 @@ milestone: v1.0
 milestone_name: milestone
 current_plan: Not started
 status: planning
-stopped_at: "Checkpoint: 05-04 awaiting human visual verification"
-last_updated: "2026-03-09T17:15:07.033Z"
+stopped_at: Completed 05-04-PLAN.md — Phase 5 and milestone v1.0 complete
+last_updated: "2026-03-09T18:37:47.573Z"
 progress:
   total_phases: 5
   completed_phases: 5
@@ -117,6 +117,7 @@ progress:
 - [Phase 05]: UNSUPPORTED_TARGET_FORMAT guard placed before buffer read to avoid unnecessary I/O for invalid target formats
 - [Phase 05]: Quality validation replaces Math.min/max silent clamp with explicit INVALID_QUALITY guard — API returns meaningful errors
 - [Phase 05]: dark: variants added inline with existing light-mode classes — no toggle or CSS modules; STATUS_BADGE uses 900/950 dark pattern; primary blue/green buttons left without dark: (WCAG AA on neutral-950)
+- [Phase 05]: Suite gate (npm test + npm run build) run before human checkpoint — both exit 0 confirms all Phase 5 implementation is correct; human verified dark mode surfaces and API error shapes on 2026-03-09
 
 ## Performance Metrics
 
@@ -146,10 +147,11 @@ progress:
 | Phase 05 P02 | 5min | 2 tasks | 2 files |
 | Phase 05 P03 | 3min | 2 tasks | 7 files |
 | Phase 05 P04 | 5min | 1 tasks | 0 files |
+| Phase 05 P04 | 10min | 2 tasks | 0 files |
 
 ## Last Session
 
-**Stopped at:** Checkpoint: 05-04 awaiting human visual verification
+**Stopped at:** Completed 05-04-PLAN.md — Phase 5 and milestone v1.0 complete
 **Timestamp:** 2026-03-07T11:10:00Z
 
 ## Next Action
