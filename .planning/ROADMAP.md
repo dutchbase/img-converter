@@ -353,7 +353,13 @@ Plans:
 3. With the OS set to dark mode, all UI surfaces (drop zone, options panel, result panel, batch queue) use dark backgrounds and legible light text — no white panels appear against a dark background.
 4. With the OS set to light mode, the UI is visually unchanged from the pre-Phase 5 state.
 
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+- [ ] 05-01-PLAN.md — Wave 0 test stubs: REQ-501 it.todo() stubs in route.test.ts
+- [ ] 05-02-PLAN.md — API typing: ApiErrorResponse interface, errorResponse() helper, status fix (413), field annotations, new validation guards
+- [ ] 05-03-PLAN.md — Dark mode: app/page.tsx + DropZone + ConvertOptions + ConvertResult + ImagePreview + BatchQueue + ImageConverter
+- [ ] 05-04-PLAN.md — Human verify: full suite gate + dark mode visual sign-off + API error shape confirmation
 
 ---
 
@@ -365,7 +371,7 @@ Plans:
 | 2. Batch Browser UX | 7/7 | 6/6 Complete | Complete | 2026-03-06 |
 | 3. HEIC Input Support | 3/3 | 4/4 Complete | Complete | 2026-03-07 |
 | 4. CLI Tool | 5/5 | Complete   | 2026-03-07 | - |
-| 5. API Polish & Dark Mode | REQ-501 through REQ-502 | 0/? | Not started | - |
+| 5. API Polish & Dark Mode | REQ-501 through REQ-502 | 0/4 | Not started | - |
 
 ---
 
