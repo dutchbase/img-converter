@@ -53,10 +53,10 @@ export default function DropZone({ onFilesSelect, disabled = false }: DropZonePr
       onDrop={onDrop}
       className={`relative flex flex-col items-center justify-center w-full rounded-2xl border-2 border-dashed transition-colors min-h-48 ${
         disabled
-          ? "border-neutral-200 bg-neutral-50 opacity-50 pointer-events-none cursor-not-allowed"
+          ? "border-neutral-200 bg-neutral-50 opacity-50 pointer-events-none cursor-not-allowed dark:border-neutral-700 dark:bg-neutral-900"
           : isDragging
-          ? "border-blue-500 bg-blue-50 cursor-pointer"
-          : "border-neutral-300 hover:border-blue-400 hover:bg-neutral-50 cursor-pointer"
+          ? "border-blue-500 bg-blue-50 cursor-pointer dark:bg-blue-950 dark:border-blue-400"
+          : "border-neutral-300 hover:border-blue-400 hover:bg-neutral-50 cursor-pointer dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800 dark:hover:border-blue-400"
       }`}
     >
       <input
@@ -69,7 +69,7 @@ export default function DropZone({ onFilesSelect, disabled = false }: DropZonePr
       />
       <div className="pointer-events-none flex flex-col items-center gap-3 p-8 text-center">
         <svg
-          className={`w-12 h-12 ${isDragging ? "text-blue-500" : "text-neutral-400"}`}
+          className={`w-12 h-12 ${isDragging ? "text-blue-500" : "text-neutral-400 dark:text-neutral-500"}`}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -82,10 +82,10 @@ export default function DropZone({ onFilesSelect, disabled = false }: DropZonePr
           />
         </svg>
         <div>
-          <p className="text-base font-semibold text-neutral-700">
+          <p className="text-base font-semibold text-neutral-700 dark:text-neutral-200">
             Drop images here, or click to browse
           </p>
-          <p className="mt-1 text-sm text-neutral-500">{supportedFormats} &mdash; up to 50 MB each</p>
+          <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">{supportedFormats} &mdash; up to 50 MB each</p>
         </div>
       </div>
       {error && (

@@ -20,7 +20,7 @@ export default function ConvertOptionsPanel({ sourceFormat, options, onChange }:
     <div className="flex flex-col gap-6">
       {/* Format selector */}
       <div>
-        <label className="block text-sm font-semibold text-neutral-700 mb-2">Convert to</label>
+        <label className="block text-sm font-semibold text-neutral-700 dark:text-neutral-200 mb-2">Convert to</label>
         <div className="flex flex-wrap gap-2">
           {OUTPUT_FORMATS.map((fmt) => (
             <button
@@ -30,8 +30,8 @@ export default function ConvertOptionsPanel({ sourceFormat, options, onChange }:
                 options.targetFormat === fmt
                   ? "bg-blue-600 text-white border-blue-600"
                   : fmt === sourceFormat && sourceFormat !== null
-                  ? "bg-neutral-100 text-neutral-400 border-neutral-200 cursor-default"
-                  : "bg-white text-neutral-700 border-neutral-300 hover:border-blue-400 hover:text-blue-600"
+                  ? "bg-neutral-100 text-neutral-400 border-neutral-200 cursor-default dark:bg-neutral-800 dark:text-neutral-600 dark:border-neutral-700"
+                  : "bg-white text-neutral-700 border-neutral-300 hover:border-blue-400 hover:text-blue-600 dark:bg-neutral-800 dark:text-neutral-200 dark:border-neutral-700 dark:hover:border-blue-400 dark:hover:text-blue-400"
               }`}
             >
               {FORMAT_LABELS[fmt]}
@@ -41,7 +41,7 @@ export default function ConvertOptionsPanel({ sourceFormat, options, onChange }:
 
         {/* REQ-105: AVIF encoding hint */}
         {options.targetFormat === "avif" && (
-          <p className="flex items-center gap-1.5 text-xs text-neutral-500 mt-2">
+          <p className="flex items-center gap-1.5 text-xs text-neutral-500 dark:text-neutral-400 mt-2">
             <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
             </svg>
@@ -53,7 +53,7 @@ export default function ConvertOptionsPanel({ sourceFormat, options, onChange }:
       {/* Quality */}
       <div className={qualityApplies ? "" : "opacity-40 pointer-events-none"}>
         <div className="flex items-center justify-between mb-2">
-          <label className="text-sm font-semibold text-neutral-700">
+          <label className="text-sm font-semibold text-neutral-700 dark:text-neutral-200">
             Quality
             {!qualityApplies && (
               <span className="ml-2 text-xs font-normal text-neutral-400">(not applicable for {FORMAT_LABELS[options.targetFormat]})</span>
@@ -69,7 +69,7 @@ export default function ConvertOptionsPanel({ sourceFormat, options, onChange }:
           onChange={(e) => set("quality", parseInt(e.target.value, 10))}
           className="w-full accent-blue-600"
         />
-        <div className="flex justify-between text-xs text-neutral-400 mt-1">
+        <div className="flex justify-between text-xs text-neutral-400 dark:text-neutral-500 mt-1">
           <span>Smaller file</span>
           <span>Higher quality</span>
         </div>
@@ -77,29 +77,29 @@ export default function ConvertOptionsPanel({ sourceFormat, options, onChange }:
 
       {/* Resize */}
       <div>
-        <label className="block text-sm font-semibold text-neutral-700 mb-2">Resize (optional)</label>
+        <label className="block text-sm font-semibold text-neutral-700 dark:text-neutral-200 mb-2">Resize (optional)</label>
         <div className="flex items-center gap-3">
           <div className="flex-1">
-            <label className="block text-xs text-neutral-500 mb-1">Width (px)</label>
+            <label className="block text-xs text-neutral-500 dark:text-neutral-400 mb-1">Width (px)</label>
             <input
               type="number"
               min={1}
               placeholder="e.g. 1920"
               value={options.resizeWidth ?? ""}
               onChange={(e) => set("resizeWidth", e.target.value ? parseInt(e.target.value, 10) : null)}
-              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-neutral-800 dark:border-neutral-600 dark:text-neutral-200"
             />
           </div>
           <span className="mt-5 text-neutral-400 text-lg">×</span>
           <div className="flex-1">
-            <label className="block text-xs text-neutral-500 mb-1">Height (px)</label>
+            <label className="block text-xs text-neutral-500 dark:text-neutral-400 mb-1">Height (px)</label>
             <input
               type="number"
               min={1}
               placeholder="e.g. 1080"
               value={options.resizeHeight ?? ""}
               onChange={(e) => set("resizeHeight", e.target.value ? parseInt(e.target.value, 10) : null)}
-              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-neutral-800 dark:border-neutral-600 dark:text-neutral-200"
             />
           </div>
         </div>
@@ -110,7 +110,7 @@ export default function ConvertOptionsPanel({ sourceFormat, options, onChange }:
             onChange={(e) => set("maintainAspectRatio", e.target.checked)}
             className="w-4 h-4 accent-blue-600"
           />
-          <span className="text-sm text-neutral-600">Maintain aspect ratio</span>
+          <span className="text-sm text-neutral-600 dark:text-neutral-300">Maintain aspect ratio</span>
         </label>
 
         {/* REQ-107: Allow upscaling toggle — only visible when resize dimensions are entered */}
@@ -124,8 +124,8 @@ export default function ConvertOptionsPanel({ sourceFormat, options, onChange }:
               className="mt-0.5 w-4 h-4 accent-blue-600 cursor-pointer"
             />
             <label htmlFor="allow-upscaling" className="cursor-pointer">
-              <span className="block text-sm font-semibold text-neutral-700">Allow upscaling</span>
-              <span className="block text-xs text-neutral-500 mt-0.5">
+              <span className="block text-sm font-semibold text-neutral-700 dark:text-neutral-200">Allow upscaling</span>
+              <span className="block text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
                 By default, images are not enlarged beyond their original size.
               </span>
             </label>
@@ -134,7 +134,7 @@ export default function ConvertOptionsPanel({ sourceFormat, options, onChange }:
       </div>
 
       {/* Metadata */}
-      <div className="flex items-start gap-3 rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3">
+      <div className="flex items-start gap-3 rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 dark:border-neutral-700 dark:bg-neutral-800">
         <input
           type="checkbox"
           id="remove-metadata"
@@ -143,8 +143,8 @@ export default function ConvertOptionsPanel({ sourceFormat, options, onChange }:
           className="mt-0.5 w-4 h-4 accent-blue-600 cursor-pointer"
         />
         <label htmlFor="remove-metadata" className="cursor-pointer">
-          <span className="block text-sm font-semibold text-neutral-700">Remove metadata</span>
-          <span className="block text-xs text-neutral-500 mt-0.5">
+          <span className="block text-sm font-semibold text-neutral-700 dark:text-neutral-200">Remove metadata</span>
+          <span className="block text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
             Strips EXIF data (GPS location, camera model, timestamps, etc.)
           </span>
         </label>
