@@ -95,3 +95,12 @@ describe("POST /api/convert — REQ-104: magic-byte MIME verification (HTTP 415)
   );
   it.todo("passes MIME verification for a valid JPEG file");
 });
+
+describe("POST /api/convert — REQ-501: structured error responses", () => {
+  it.todo("returns 413 FILE_TOO_LARGE with { error, message } when file exceeds 50 MB");
+  it.todo("returns 400 MISSING_FILE with field: 'file' when no file is attached");
+  it.todo("returns 400 MISSING_TARGET_FORMAT with field: 'targetFormat' when targetFormat is absent");
+  it.todo("returns 400 INVALID_QUALITY with field: 'quality' when quality is out of range");
+  it.todo("returns 400 INVALID_DIMENSION with field: 'resizeWidth' when width is non-positive");
+  it.todo("returns 400 UNSUPPORTED_TARGET_FORMAT with field: 'targetFormat' when targetFormat is heic");
+});
