@@ -75,3 +75,11 @@ export interface BatchItem {
   error?: string;           // present only when status === "error"
   errorCode?: string;       // machine-readable code for conditional rendering (e.g. "LIVE_PHOTO_NOT_SUPPORTED")
 }
+
+// --- API error response shape (Phase 5 REQ-501) ---
+
+export interface ApiErrorResponse {
+  error: string;
+  message: string;
+  field?: string;
+}
