@@ -235,7 +235,7 @@ export default function ImageConverter() {
           {allDone && (
             <button
               onClick={handleClearQueue}
-              className="w-full rounded-xl border border-neutral-300 text-neutral-700 font-semibold px-6 py-3.5 hover:bg-neutral-50 transition-colors"
+              className="w-full rounded-xl border border-neutral-300 text-neutral-700 font-semibold px-6 py-3.5 hover:bg-neutral-50 transition-colors dark:border-neutral-600 dark:text-neutral-300 dark:hover:bg-neutral-800"
             >
               Clear queue
             </button>

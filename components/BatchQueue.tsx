@@ -29,10 +29,10 @@ function formatSize(bytes: number): string {
 }
 
 const STATUS_BADGE: Record<string, string> = {
-  pending: "bg-neutral-100 text-neutral-500",
-  converting: "bg-blue-50 text-blue-600",
-  done: "bg-green-50 text-green-700",
-  error: "bg-red-50 text-red-700",
+  pending: "bg-neutral-100 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400",
+  converting: "bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-300",
+  done: "bg-green-50 text-green-700 dark:bg-green-900 dark:text-green-200",
+  error: "bg-red-50 text-red-700 dark:bg-red-900 dark:text-red-200",
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -78,27 +78,27 @@ export default function BatchQueue({
     <div className="flex flex-col gap-3">
       {/* Aggregate count */}
       <div className="flex items-center justify-between">
-        <p className="text-sm text-neutral-500 font-medium">
+        <p className="text-sm text-neutral-500 dark:text-neutral-400 font-medium">
           {doneCount} / {items.length} converted
         </p>
       </div>
 
       {/* Scrollable row list */}
-      <div className="flex flex-col divide-y divide-neutral-100 rounded-xl border border-neutral-200 overflow-hidden max-h-96 overflow-y-auto">
+      <div className="flex flex-col divide-y divide-neutral-100 dark:divide-neutral-700 rounded-xl border border-neutral-200 dark:border-neutral-700 overflow-hidden max-h-96 overflow-y-auto">
         {items.map((item) => (
-          <div key={item.id} className="flex flex-col px-4 py-3 bg-white gap-1">
+          <div key={item.id} className="flex flex-col px-4 py-3 bg-white dark:bg-neutral-900 gap-1">
             {/* Main row: filename + sizes + status badge + action */}
             <div className="flex items-center gap-3 min-w-0">
               {/* Filename */}
               <span
-                className="flex-1 text-sm font-medium text-neutral-800 truncate min-w-0"
+                className="flex-1 text-sm font-medium text-neutral-800 dark:text-neutral-100 truncate min-w-0"
                 title={item.file.name}
               >
                 {item.file.name}
               </span>
 
               {/* Sizes */}
-              <span className="text-xs text-neutral-500 whitespace-nowrap flex-shrink-0">
+              <span className="text-xs text-neutral-500 dark:text-neutral-400 whitespace-nowrap flex-shrink-0">
                 {formatSize(item.originalSize)}
                 {item.status === "done" && item.result && (
                   <> &rarr; {formatSize(item.result.sizeBytes)}</>
@@ -140,7 +140,7 @@ export default function BatchQueue({
                   <button
                     onClick={() => onRemoveItem(item.id)}
                     disabled={isConverting}
-                    className="text-neutral-400 hover:text-neutral-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors p-0.5"
+                    className="text-neutral-400 hover:text-neutral-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors p-0.5 dark:text-neutral-500 dark:hover:text-neutral-300"
                     aria-label={`Remove ${item.file.name}`}
                   >
                     <svg
@@ -164,7 +164,7 @@ export default function BatchQueue({
                   <a
                     href={item.result.url}
                     download={item.result.filename}
-                    className="text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors"
+                    className="text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors dark:hover:text-blue-400"
                   >
                     Download
                   </a>
@@ -174,7 +174,7 @@ export default function BatchQueue({
                 {shouldShowRetry(item) && (
                   <button
                     onClick={() => onRetryItem(item.id)}
-                    className="text-xs font-medium text-red-600 hover:text-red-800 transition-colors"
+                    className="text-xs font-medium text-red-600 hover:text-red-800 transition-colors dark:hover:text-red-400"
                   >
                     Retry
                   </button>
@@ -184,7 +184,7 @@ export default function BatchQueue({
 
             {/* Error message row — error status only */}
             {item.status === "error" && item.error && (
-              <p className="text-xs text-red-600 pl-0 mt-0.5">{item.error}</p>
+              <p className="text-xs text-red-600 dark:text-red-400 pl-0 mt-0.5">{item.error}</p>
             )}
           </div>
         ))}
