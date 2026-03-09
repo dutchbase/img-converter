@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 current_plan: Not started
 status: planning
-stopped_at: Completed 05-02-PLAN.md
-last_updated: "2026-03-09T17:07:37.381Z"
+stopped_at: Completed 05-03-PLAN.md
+last_updated: "2026-03-09T17:13:02.199Z"
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 23
-  completed_plans: 21
+  completed_plans: 22
 ---
 
 # Project State
@@ -116,6 +116,7 @@ progress:
 - [Phase 05]: errorResponse() is non-exported helper in route.ts — scope limited to module, not leaking to public API
 - [Phase 05]: UNSUPPORTED_TARGET_FORMAT guard placed before buffer read to avoid unnecessary I/O for invalid target formats
 - [Phase 05]: Quality validation replaces Math.min/max silent clamp with explicit INVALID_QUALITY guard — API returns meaningful errors
+- [Phase 05]: dark: variants added inline with existing light-mode classes — no toggle or CSS modules; STATUS_BADGE uses 900/950 dark pattern; primary blue/green buttons left without dark: (WCAG AA on neutral-950)
 
 ## Performance Metrics
 
@@ -143,10 +144,11 @@ progress:
 | Phase 04 P05 | 20min | 2 tasks | 2 files |
 | Phase 05 P01 | 3min | 1 tasks | 1 files |
 | Phase 05 P02 | 5min | 2 tasks | 2 files |
+| Phase 05 P03 | 3min | 2 tasks | 7 files |
 
 ## Last Session
 
-**Stopped at:** Completed 05-02-PLAN.md
+**Stopped at:** Completed 05-03-PLAN.md
 **Timestamp:** 2026-03-07T11:10:00Z
 
 ## Next Action
