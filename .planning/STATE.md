@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 current_plan: Not started
 status: planning
-stopped_at: Completed 05-01-PLAN.md
-last_updated: "2026-03-09T17:04:33.561Z"
+stopped_at: Completed 05-02-PLAN.md
+last_updated: "2026-03-09T17:07:37.381Z"
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 23
-  completed_plans: 20
+  completed_plans: 21
 ---
 
 # Project State
@@ -113,6 +113,9 @@ progress:
 - [Phase 04-cli-tool]: tsc-alias chosen to resolve @/ path aliases in compiled CLI JS output — zero config beyond existing tsconfig.cli.json paths
 - [Phase 04-cli-tool]: bin field updated to dist/cli/cli/index.js — actual tsc output path with rootDir:. and outDir:dist/cli
 - [Phase 05]: REQ-501 stubs placed in their own describe block appended after existing blocks — no modification to existing tests
+- [Phase 05]: errorResponse() is non-exported helper in route.ts — scope limited to module, not leaking to public API
+- [Phase 05]: UNSUPPORTED_TARGET_FORMAT guard placed before buffer read to avoid unnecessary I/O for invalid target formats
+- [Phase 05]: Quality validation replaces Math.min/max silent clamp with explicit INVALID_QUALITY guard — API returns meaningful errors
 
 ## Performance Metrics
 
@@ -139,10 +142,11 @@ progress:
 | Phase 04-cli-tool P05 | 15min | 1 tasks | 2 files |
 | Phase 04 P05 | 20min | 2 tasks | 2 files |
 | Phase 05 P01 | 3min | 1 tasks | 1 files |
+| Phase 05 P02 | 5min | 2 tasks | 2 files |
 
 ## Last Session
 
-**Stopped at:** Completed 05-01-PLAN.md
+**Stopped at:** Completed 05-02-PLAN.md
 **Timestamp:** 2026-03-07T11:10:00Z
 
 ## Next Action

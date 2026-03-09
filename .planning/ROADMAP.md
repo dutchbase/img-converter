@@ -371,7 +371,7 @@ Plans:
 | 2. Batch Browser UX | 7/7 | 6/6 Complete | Complete | 2026-03-06 |
 | 3. HEIC Input Support | 3/3 | 4/4 Complete | Complete | 2026-03-07 |
 | 4. CLI Tool | 5/5 | Complete   | 2026-03-07 | - |
-| 5. API Polish & Dark Mode | 1/4 | In Progress|  | - |
+| 5. API Polish & Dark Mode | 2/4 | In Progress|  | - |
 
 ---
 
