@@ -2,7 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import sharp from "sharp";
 import { processImage, detectFormat } from "@/lib/imageProcessor";
 import { processingQueue } from "@/lib/processingQueue";
-import { ConvertOptions, ImageFormat, FORMAT_MIME, FORMAT_EXTENSIONS } from "@/types";
+import {
+  ConvertOptions,
+  ImageFormat,
+  FORMAT_MIME,
+  FORMAT_EXTENSIONS,
+  INPUT_ONLY_FORMATS,
+  FORMAT_LABELS,
+  ApiErrorResponse,
+} from "@/types";
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
 const MAX_PIXELS = 25_000_000; // 25 megapixels
@@ -19,39 +27,45 @@ export function sanitizeFilename(rawName: string, ext: string): string {
   return `${safe}.${ext}`;
 }
 
+function errorResponse(body: ApiErrorResponse, status: number): NextResponse {
+  return NextResponse.json(body, { status });
+}
+
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
 
     if (!file) {
-      return NextResponse.json(
-        { error: "MISSING_FILE", message: "No file provided" },
-        { status: 400 }
-      );
+      return errorResponse({ error: "MISSING_FILE", message: "No file provided", field: "file" }, 400);
     }
 
     if (file.size > MAX_FILE_SIZE) {
-      return NextResponse.json(
-        { error: "FILE_TOO_LARGE", message: "File exceeds 50 MB limit" },
-        { status: 400 }
-      );
+      return errorResponse({ error: "FILE_TOO_LARGE", message: "File exceeds 50 MB limit" }, 413);
     }
 
     // Fast format pre-filter based on browser-supplied MIME type
     const sourceFormat = detectFormat(file.type);
     if (!sourceFormat) {
-      return NextResponse.json(
-        { error: "UNSUPPORTED_FORMAT", message: "Unsupported image format" },
-        { status: 400 }
-      );
+      return errorResponse({ error: "UNSUPPORTED_FORMAT", message: "Unsupported image format" }, 400);
     }
 
     const targetFormat = formData.get("targetFormat") as ImageFormat | null;
     if (!targetFormat) {
-      return NextResponse.json(
-        { error: "MISSING_TARGET_FORMAT", message: "Target format is required" },
-        { status: 400 }
+      return errorResponse(
+        { error: "MISSING_TARGET_FORMAT", message: "Target format is required", field: "targetFormat" },
+        400
+      );
+    }
+
+    if (INPUT_ONLY_FORMATS.includes(targetFormat as ImageFormat)) {
+      return errorResponse(
+        {
+          error: "UNSUPPORTED_TARGET_FORMAT",
+          message: `${FORMAT_LABELS[targetFormat as ImageFormat]} is not a supported output format`,
+          field: "targetFormat",
+        },
+        400
       );
     }
 
@@ -63,30 +77,50 @@ export async function POST(req: NextRequest) {
     const { fileTypeFromBuffer } = await import("file-type");
     const detected = await fileTypeFromBuffer(inputBuffer);
     if (!detected || !detectFormat(detected.mime)) {
-      return NextResponse.json(
-        {
-          error: "UNSUPPORTED_FORMAT",
-          message: "File type does not match its contents",
-        },
-        { status: 415 }
+      return errorResponse(
+        { error: "UNSUPPORTED_FORMAT", message: "File type does not match its contents" },
+        415
       );
     }
 
     // REQ-101: Pixel dimension pre-check — reject images exceeding 25 megapixels
     const meta = await sharp(inputBuffer).metadata();
     if ((meta.width ?? 0) * (meta.height ?? 0) > MAX_PIXELS) {
-      return NextResponse.json(
-        {
-          error: "IMAGE_TOO_LARGE",
-          message: "Image dimensions exceed limit",
-        },
-        { status: 422 }
+      return errorResponse(
+        { error: "IMAGE_TOO_LARGE", message: "Image dimensions exceed limit" },
+        422
       );
     }
 
     const quality = parseInt(formData.get("quality") as string ?? "85", 10);
+    if (isNaN(quality) || quality < 1 || quality > 100) {
+      return errorResponse(
+        { error: "INVALID_QUALITY", message: "Quality must be between 1 and 100", field: "quality" },
+        400
+      );
+    }
+
     const resizeWidthRaw = formData.get("resizeWidth") as string | null;
+    if (resizeWidthRaw !== null && resizeWidthRaw !== "") {
+      const w = parseInt(resizeWidthRaw, 10);
+      if (isNaN(w) || w <= 0) {
+        return errorResponse(
+          { error: "INVALID_DIMENSION", message: "Width must be a positive integer", field: "resizeWidth" },
+          400
+        );
+      }
+    }
     const resizeHeightRaw = formData.get("resizeHeight") as string | null;
+    if (resizeHeightRaw !== null && resizeHeightRaw !== "") {
+      const h = parseInt(resizeHeightRaw, 10);
+      if (isNaN(h) || h <= 0) {
+        return errorResponse(
+          { error: "INVALID_DIMENSION", message: "Height must be a positive integer", field: "resizeHeight" },
+          400
+        );
+      }
+    }
+
     const maintainAspectRatio = formData.get("maintainAspectRatio") === "true";
     const removeMetadata = formData.get("removeMetadata") === "true";
     // REQ-107: Parse allowUpscaling from formData (only sent when checkbox is checked)
@@ -94,9 +128,9 @@ export async function POST(req: NextRequest) {
 
     const options: ConvertOptions = {
       targetFormat,
-      quality: Math.min(100, Math.max(1, quality)),
-      resizeWidth: resizeWidthRaw ? parseInt(resizeWidthRaw, 10) : null,
-      resizeHeight: resizeHeightRaw ? parseInt(resizeHeightRaw, 10) : null,
+      quality,
+      resizeWidth: resizeWidthRaw && resizeWidthRaw !== "" ? parseInt(resizeWidthRaw, 10) : null,
+      resizeHeight: resizeHeightRaw && resizeHeightRaw !== "" ? parseInt(resizeHeightRaw, 10) : null,
       maintainAspectRatio,
       removeMetadata,
       allowUpscaling,
@@ -111,12 +145,9 @@ export async function POST(req: NextRequest) {
         processErr instanceof Error &&
         processErr.name === "LIVE_PHOTO_NOT_SUPPORTED"
       ) {
-        return NextResponse.json(
-          {
-            error: "LIVE_PHOTO_NOT_SUPPORTED",
-            message: "Live Photo detected — only still frames are supported.",
-          },
-          { status: 422 }
+        return errorResponse(
+          { error: "LIVE_PHOTO_NOT_SUPPORTED", message: "Live Photo detected — only still frames are supported." },
+          422
         );
       }
       throw processErr;
@@ -141,9 +172,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (err) {
     console.error("Conversion error:", err);
-    return NextResponse.json(
-      { error: "CONVERSION_FAILED", message: "Image conversion failed" },
-      { status: 500 }
-    );
+    return errorResponse({ error: "CONVERSION_FAILED", message: "Image conversion failed" }, 500);
   }
 }
