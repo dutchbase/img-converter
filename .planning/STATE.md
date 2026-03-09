@@ -1,11 +1,11 @@
 ---
 gsd_state_version: 1.0
 milestone: v1.0
-milestone_name: milestone
+milestone_name: Core Polish + Batch + CLI
 current_plan: Not started
-status: completed
-stopped_at: Completed 05-04-PLAN.md — Phase 5 and milestone v1.0 complete
-last_updated: "2026-03-09T18:41:34.741Z"
+status: milestone_archived
+stopped_at: v1.0 milestone archived — ready for next milestone
+last_updated: "2026-03-09T20:00:00.000Z"
 progress:
   total_phases: 5
   completed_phases: 5
@@ -16,18 +16,25 @@ progress:
 # Project State
 
 **Project:** Image Converter
-**Updated:** 2026-03-06
-**Status:** Milestone complete
+**Updated:** 2026-03-09
+**Status:** v1.0 archived — planning next milestone
 
-## Current Milestone
+## Project Reference
 
-**Milestone 1:** Core Polish + Batch + CLI
+See: `.planning/PROJECT.md` (updated 2026-03-09)
+
+**Core value:** Fast, private image conversion on your own machine.
+**Current focus:** Planning next milestone — run `/gsd:new-milestone`
+
+## Milestone Archive
+
+**v1.0 Core Polish + Batch + CLI** — shipped 2026-03-09
+- 5 phases, 23 plans, 3 days
+- Archives: `.planning/milestones/v1.0-ROADMAP.md`, `.planning/milestones/v1.0-REQUIREMENTS.md`
 
 ## Current Phase
 
-**Phase 2:** Batch Browser UX — COMPLETE (2026-03-06)
-
-**Current Plan:** Not started
+(None — milestone complete)
 
 ## Completed Phases
 
