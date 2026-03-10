@@ -22,6 +22,7 @@ img-convert mcp
 ## Table of Contents
 
 - [Why img-convert](#why-img-convert)
+- [Agent Skill](#agent-skill)
 - [Installation](#installation)
 - [CLI Reference](#cli-reference)
   - [Convert](#convert-default-action)
@@ -42,6 +43,38 @@ img-convert mcp
 - [Architecture](#architecture)
 - [Development](#development)
 - [Contributing](#contributing)
+
+---
+
+## Agent Skill
+
+`img-convert` ships a `SKILL.md` file that coding agents can import to get full, structured knowledge of every command, flag, pattern, and gotcha — without reading this README.
+
+### Import into Claude Code (global, all projects)
+
+```bash
+/instinct-import https://raw.githubusercontent.com/dutchbase/img-converter/main/SKILL.md
+```
+
+### Import as a project-scoped skill
+
+```bash
+/instinct-import https://raw.githubusercontent.com/dutchbase/img-converter/main/SKILL.md --scope project
+```
+
+Once imported, any Claude Code session automatically knows:
+
+- Which interface to use (CLI vs API vs MCP vs REST) for a given task
+- To always run `img-convert info` before converting unknown images
+- The `--json` / stderr separation contract for piping
+- Every CLI flag, including new ones (`--grayscale`, `--rotate`, `--normalize`, etc.)
+- The manifest format for `batch` subcommand
+- All MCP tool signatures and return shapes
+- The Node.js API types and common patterns
+- Format gotchas (HEIC input-only, alpha→JPEG background, animated GIF rules)
+- Common mistakes and how to avoid them
+
+The skill file is kept in sync with the package at [`SKILL.md`](./SKILL.md).
 
 ---
 
