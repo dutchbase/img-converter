@@ -2,7 +2,16 @@
   "name": "@dutchbase/img-convert",
   "version": "1.0.0",
   "description": "Fast image converter with CLI, MCP server, and Node.js API — powered by Sharp",
-  "keywords": ["image", "converter", "sharp", "cli", "mcp", "webp", "avif", "heic"],
+  "keywords": [
+    "image",
+    "converter",
+    "sharp",
+    "cli",
+    "mcp",
+    "webp",
+    "avif",
+    "heic"
+  ],
   "license": "MIT",
   "engines": {
     "node": ">=18.0.0"
@@ -23,9 +32,7 @@
       "types": "./dist/cli/types/index.d.ts"
     }
   },
-  "bin": {
-    "img-convert": "./dist/cli/cli/index.js"
-  },
+  "bin": "./dist/cli/cli/index.js",
   "publishConfig": {
     "access": "public"
   },
