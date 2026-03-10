@@ -25,7 +25,7 @@ Choose the right interface for the context:
 | Situation | Use |
 |-----------|-----|
 | Shell task, build script, CI pipeline | CLI (`img-convert`) |
-| Node.js code that needs the output buffer | Node.js API (`import { convert } from 'img-convert'`) |
+| Node.js code that needs the output buffer | Node.js API (`import { convert } from '@dutchbase/img-convert'`) |
 | Claude Code or MCP-enabled AI agent | MCP tools (`convert_image`, `get_image_info`) |
 | Browser or external HTTP client | REST API (`POST /api/convert`) |
 | Multiple files with different settings each | CLI `batch` subcommand or API `batch()` |
@@ -279,7 +279,7 @@ Add to `~/.claude/mcp.json` (or equivalent for your client):
 ## Node.js API
 
 ```typescript
-import { convert, getInfo, batch } from 'img-convert'
+import { convert, getInfo, batch } from '@dutchbase/img-convert'
 ```
 
 All functions accept file paths, HTTP/HTTPS URLs, or `Buffer`.
@@ -433,7 +433,7 @@ done
 ### Pattern 5: Node.js API in middleware
 
 ```typescript
-import { getInfo, convert } from 'img-convert'
+import { getInfo, convert } from '@dutchbase/img-convert'
 
 async function handleUpload(buffer: Buffer): Promise<Buffer> {
   const info = await getInfo(buffer)
@@ -517,10 +517,10 @@ In `--json` mode, exit code `1` still writes a JSON array to stdout — failed i
 
 ```bash
 # Global CLI
-npm install -g img-convert
+npm install -g @dutchbase/img-convert
 
 # Local dependency (Node.js API)
-npm install img-convert
+npm install @dutchbase/img-convert
 
 # Verify
 img-convert --help

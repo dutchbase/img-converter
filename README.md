@@ -3,7 +3,7 @@
 Fast, scriptable image conversion powered by [Sharp](https://sharp.pixelplumbing.com). Ships as an npm package, a CLI, a REST API, and a [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server — making it a first-class tool for both developers and AI agents.
 
 ```bash
-npm install -g img-convert
+npm install -g @dutchbase/img-convert
 ```
 
 ```bash
@@ -96,13 +96,13 @@ Most image conversion tools are designed for interactive use — a GUI, a web fo
 ### Global CLI
 
 ```bash
-npm install -g img-convert
+npm install -g @dutchbase/img-convert
 ```
 
 ### Local dependency (Node.js API)
 
 ```bash
-npm install img-convert
+npm install @dutchbase/img-convert
 ```
 
 ### Self-hosted web UI
@@ -574,7 +574,7 @@ No shell interpolation, no quoting edge cases, fully declarative, fully auditabl
 ## Node.js API
 
 ```typescript
-import { convert, getInfo, batch } from 'img-convert'
+import { convert, getInfo, batch } from '@dutchbase/img-convert'
 ```
 
 All three functions accept file paths, HTTP/HTTPS URLs, or raw `Buffer` objects as input.
@@ -636,7 +636,7 @@ interface ConvertApiResult {
 **Examples:**
 
 ```typescript
-import { convert } from 'img-convert'
+import { convert } from '@dutchbase/img-convert'
 import fs from 'fs/promises'
 
 // Convert a local file
@@ -701,7 +701,7 @@ interface ImageInfo {
 **Examples:**
 
 ```typescript
-import { getInfo, convert } from 'img-convert'
+import { getInfo, convert } from '@dutchbase/img-convert'
 
 const info = await getInfo('./photo.jpg')
 // { format: 'jpeg', width: 4032, height: 3024, filesize: 3891200,
@@ -759,7 +759,7 @@ interface BatchApiResult {
 **Example:**
 
 ```typescript
-import { batch } from 'img-convert'
+import { batch } from '@dutchbase/img-convert'
 
 const results = await batch(
   [

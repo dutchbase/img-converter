@@ -1,5 +1,5 @@
 {
-  "name": "img-convert",
+  "name": "@dutchbase/img-convert",
   "version": "1.0.0",
   "description": "Fast image converter with CLI, MCP server, and Node.js API — powered by Sharp",
   "keywords": ["image", "converter", "sharp", "cli", "mcp", "webp", "avif", "heic"],
