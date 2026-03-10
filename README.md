@@ -111,7 +111,7 @@ npm install @dutchbase/img-convert
 git clone https://github.com/dutchbase/img-convert
 cd img-convert
 npm install
-npm run dev        # http://localhost:3100
+npm run dev        # http://localhost:3000
 npm run build      # production Next.js build
 ```
 
@@ -840,14 +840,14 @@ interface ApiErrorResponse {
 **curl example:**
 
 ```bash
-curl -s -X POST http://localhost:3100/api/convert \
+curl -s -X POST http://localhost:3000/api/convert \
   -F "file=@photo.jpg" \
   -F "targetFormat=webp" \
   -F "quality=85" \
   -o output.webp
 
 # Check output size from response header
-curl -sI -X POST http://localhost:3100/api/convert \
+curl -sI -X POST http://localhost:3000/api/convert \
   -F "file=@photo.jpg" \
   -F "targetFormat=webp" \
   | grep X-Output-Size
@@ -1023,7 +1023,7 @@ npm install
 ### Commands
 
 ```bash
-npm run dev            # Start Next.js dev server at http://localhost:3100
+npm run dev            # Start Next.js dev server at http://localhost:3000
 npm run build          # Production Next.js build + type-check
 npm run build:cli      # Compile CLI + API to dist/cli/ (required before running img-convert locally)
 npm run lint           # ESLint

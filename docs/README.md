@@ -19,7 +19,7 @@ A browser-based image converter with a REST API and a command-line tool, built o
 ### REST API
 
 ```bash
-curl -X POST http://localhost:3100/api/convert \
+curl -X POST http://localhost:3000/api/convert \
   -F "file=@photo.jpg" \
   -F "targetFormat=webp" \
   -F "quality=85" \

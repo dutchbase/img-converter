@@ -1,0 +1,36 @@
+#!/usr/bin/env node
+const { execFileSync } = require('child_process');
+const net = require('net');
+const path = require('path');
+
+function isPortFree(port) {
+  return new Promise((resolve) => {
+    const server = net.createServer();
+    server.once('error', () => resolve(false));
+    server.once('listening', () => server.close(() => resolve(true)));
+    server.listen(port, '127.0.0.1');
+  });
+}
+
+async function findFreePort(start, end) {
+  for (let port = start; port <= end; port++) {
+    if (await isPortFree(port)) return port;
+  }
+  throw new Error(`No free port found in range ${start}–${end}`);
+}
+
+async function main() {
+  const next = path.resolve(__dirname, '..', 'node_modules', '.bin', 'next');
+  const preferred = parseInt(process.env.PORT || '3000', 10);
+  const port = await isPortFree(preferred)
+    ? preferred
+    : await findFreePort(3001, 3100);
+
+  if (port !== preferred) {
+    console.log(`Port ${preferred} is in use, starting on port ${port} instead.`);
+  }
+
+  execFileSync(next, ['dev', '--port', String(port)], { stdio: 'inherit' });
+}
+
+main().catch((err) => { console.error(err.message); process.exit(1); });

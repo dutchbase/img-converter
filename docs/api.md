@@ -95,7 +95,7 @@ HEIC/HEIF is accepted as input only — it cannot be used as `targetFormat`.
 ### Convert to WebP with quality
 
 ```bash
-curl -X POST http://localhost:3100/api/convert \
+curl -X POST http://localhost:3000/api/convert \
   -F "file=@photo.jpg" \
   -F "targetFormat=webp" \
   -F "quality=80" \
@@ -105,7 +105,7 @@ curl -X POST http://localhost:3100/api/convert \
 ### Resize to max width, preserve aspect ratio
 
 ```bash
-curl -X POST http://localhost:3100/api/convert \
+curl -X POST http://localhost:3000/api/convert \
   -F "file=@photo.png" \
   -F "targetFormat=jpeg" \
   -F "resizeWidth=1280" \
@@ -116,7 +116,7 @@ curl -X POST http://localhost:3100/api/convert \
 ### Strip EXIF metadata
 
 ```bash
-curl -X POST http://localhost:3100/api/convert \
+curl -X POST http://localhost:3000/api/convert \
   -F "file=@photo.jpg" \
   -F "targetFormat=jpeg" \
   -F "removeMetadata=true" \

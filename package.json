@@ -33,12 +33,15 @@
       "types": "./dist/cli/types/index.d.ts"
     }
   },
-  "bin": "./bin/img-convert",
+  "bin": {
+    "img-convert": "./bin/img-convert",
+    "img-convert-web": "./bin/img-convert-web"
+  },
   "publishConfig": {
     "access": "public"
   },
   "scripts": {
-    "dev": "next dev --port 3100",
+    "dev": "next dev --port 3000",
     "build": "next build",
     "build:cli": "tsc --project tsconfig.cli.json && tsc-alias --project tsconfig.cli.json && chmod +x dist/cli/cli/index.js",
     "start": "next start",
