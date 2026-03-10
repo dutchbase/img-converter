@@ -17,6 +17,7 @@
     "node": ">=18.0.0"
   },
   "files": [
+    "bin/",
     "dist/",
     "types/",
     "lib/",
@@ -32,7 +33,7 @@
       "types": "./dist/cli/types/index.d.ts"
     }
   },
-  "bin": "./dist/cli/cli/index.js",
+  "bin": "./bin/img-convert",
   "publishConfig": {
     "access": "public"
   },
