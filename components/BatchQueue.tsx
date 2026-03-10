@@ -86,7 +86,7 @@ export default function BatchQueue({
       {/* Scrollable row list */}
       <div className="flex flex-col divide-y divide-neutral-100 dark:divide-neutral-700 rounded-xl border border-neutral-200 dark:border-neutral-700 overflow-hidden max-h-96 overflow-y-auto">
         {items.map((item) => (
-          <div key={item.id} className="flex flex-col px-4 py-3 bg-white dark:bg-neutral-900 gap-1">
+          <div key={item.id} data-status={item.status} className="flex flex-col px-4 py-3 bg-white dark:bg-neutral-900 gap-1">
             {/* Main row: filename + sizes + status badge + action */}
             <div className="flex items-center gap-3 min-w-0">
               {/* Filename */}

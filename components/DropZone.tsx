@@ -48,6 +48,7 @@ export default function DropZone({ onFilesSelect, disabled = false }: DropZonePr
 
   return (
     <div
+      data-testid="dropzone"
       onDragOver={(e) => { e.preventDefault(); if (!disabled) setIsDragging(true); }}
       onDragLeave={() => setIsDragging(false)}
       onDrop={onDrop}

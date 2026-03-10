@@ -1,0 +1,37 @@
+# Next.js app (not published)
+app/
+components/
+public/
+.next/
+next.config.ts
+next-env.d.ts
+
+# Tests
+__tests__/
+e2e/
+test-results/
+playwright.config.ts
+jest.config.ts
+
+# Planning and docs
+.planning/
+docs/
+milestones/
+
+# Config files
+.eslintrc*
+eslint.config*
+.prettierrc*
+tsconfig.tsbuildinfo
+dist/**/*.tsbuildinfo
+
+# Dev
+.env*
+*.local
+node_modules/
+
+# Git
+.git/
+.gitignore
+CLAUDE.md
+tasks/

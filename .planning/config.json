@@ -16,5 +16,8 @@
     "researcher": "sonnet",
     "synthesizer": "sonnet",
     "roadmapper": "sonnet"
+  },
+  "workflow": {
+    "_auto_chain_active": false
   }
 }

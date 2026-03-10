@@ -27,6 +27,32 @@ export async function processImage(
     image = image.withMetadata();
   }
 
+  // Auto-rotate using EXIF orientation
+  if (options.autoRotate) {
+    image = image.rotate();
+  } else if (options.rotate !== undefined && options.rotate !== 0) {
+    const bg = options.background ?? "#000000";
+    image = image.rotate(options.rotate, { background: bg });
+  }
+
+  // Flip (horizontal mirror) and flop (vertical mirror)
+  if (options.flip) {
+    image = image.flop();
+  }
+  if (options.flop) {
+    image = image.flip();
+  }
+
+  // Crop before resize
+  if (options.crop) {
+    image = image.extract({
+      left: options.crop.left,
+      top: options.crop.top,
+      width: options.crop.width,
+      height: options.crop.height,
+    });
+  }
+
   // Resize if dimensions provided
   if (options.resizeWidth || options.resizeHeight) {
     image = image.resize({
@@ -35,7 +61,38 @@ export async function processImage(
       fit: options.maintainAspectRatio ? "inside" : "fill",
       // REQ-107: Prevent upscaling unless explicitly allowed
       withoutEnlargement: !options.allowUpscaling,
+      background: options.background ?? { r: 255, g: 255, b: 255, alpha: 1 },
     });
+  }
+
+  // Grayscale
+  if (options.grayscale) {
+    image = image.grayscale();
+  }
+
+  // Normalize (automatic contrast enhancement)
+  if (options.normalize) {
+    image = image.normalize();
+  }
+
+  // Blur (Gaussian)
+  if (options.blur !== undefined && options.blur > 0) {
+    image = image.blur(options.blur);
+  }
+
+  // Sharpen (unsharp mask)
+  if (options.sharpen) {
+    image = image.sharpen();
+  }
+
+  // Trim whitespace/solid borders
+  if (options.trim) {
+    image = image.trim();
+  }
+
+  // Background fill (for transparency → opaque format conversion)
+  if (options.background && options.targetFormat === "jpeg") {
+    image = image.flatten({ background: options.background });
   }
 
   // Convert to target format
@@ -64,7 +121,7 @@ function applyFormat(
     case "tiff":
       return image.tiff({ quality });
     default:
-      throw new Error(`Unsupported format: ${format}`);
+      throw new Error(`Unsupported output format: ${format}`);
   }
 }
 
@@ -81,6 +138,17 @@ export function detectFormat(mimeType: string): ImageFormat | null {
     "image/heif": "heic",
     "image/heic-sequence": "heic",
     "image/heif-sequence": "heic",
+    "image/svg+xml": "svg",
+    "image/bmp": "bmp",
+    "image/x-bmp": "bmp",
+    "image/x-ms-bmp": "bmp",
   };
   return map[mimeType] ?? null;
+}
+
+/**
+ * Get metadata/info about an image buffer.
+ */
+export async function getImageMetadata(buffer: Buffer): Promise<sharp.Metadata> {
+  return sharp(buffer).metadata();
 }

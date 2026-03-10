@@ -1,9 +1,33 @@
 {
-  "name": "image-converter",
-  "version": "0.1.0",
-  "private": true,
+  "name": "img-convert",
+  "version": "1.0.0",
+  "description": "Fast image converter with CLI, MCP server, and Node.js API — powered by Sharp",
+  "keywords": ["image", "converter", "sharp", "cli", "mcp", "webp", "avif", "heic"],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "dist/",
+    "types/",
+    "lib/",
+    "cli/",
+    "README.md"
+  ],
+  "main": "./dist/cli/lib/api.js",
+  "types": "./dist/cli/types/index.d.ts",
+  "exports": {
+    ".": {
+      "require": "./dist/cli/lib/api.js",
+      "import": "./dist/cli/lib/api.js",
+      "types": "./dist/cli/types/index.d.ts"
+    }
+  },
   "bin": {
     "img-convert": "./dist/cli/cli/index.js"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "dev": "next dev --port 3100",
@@ -11,13 +35,21 @@
     "build:cli": "tsc --project tsconfig.cli.json && tsc-alias --project tsconfig.cli.json && chmod +x dist/cli/cli/index.js",
     "start": "next start",
     "lint": "eslint",
-    "test": "jest"
+    "test": "jest",
+    "test:unit": "jest",
+    "test:coverage": "jest --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:all": "npm run test:unit && npm run test:e2e",
+    "prepublishOnly": "npm run build:cli"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.27.1",
     "async-sema": "^3.1.1",
     "client-zip": "^2.5.0",
     "commander": "^14.0.3",
     "file-type": "^21.3.0",
+    "glob": "^10.5.0",
     "heic-convert": "^2.1.0",
     "next": "16.1.6",
     "p-limit": "^7.3.0",
@@ -26,7 +58,11 @@
     "sharp": "^0.34.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "^4",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/heic-convert": "^2.1.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^20",
@@ -36,6 +72,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "jest": "^30.2.0",
+    "jest-environment-jsdom": "^30.2.0",
     "jest-environment-node": "^30.2.0",
     "tailwindcss": "^4",
     "ts-jest": "^29.4.6",

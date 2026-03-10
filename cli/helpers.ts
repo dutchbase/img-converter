@@ -19,6 +19,8 @@ const EXT_TO_FORMAT: Record<string, ImageFormat> = {
   ".tif": "tiff",
   ".heic": "heic",
   ".heif": "heic",
+  ".svg": "svg",
+  ".bmp": "bmp",
 };
 
 /**
@@ -61,6 +63,17 @@ interface CommanderOpts {
   output?: string;      // output directory
   concurrency: number;  // default 4
   quiet: boolean;       // default false
+  // New processing options
+  grayscale?: boolean;
+  rotate?: number;
+  autoRotate?: boolean;
+  flip?: boolean;
+  flop?: boolean;
+  background?: string;
+  blur?: number;
+  sharpen?: boolean;
+  normalize?: boolean;
+  trim?: boolean;
 }
 
 /**
@@ -77,7 +90,17 @@ export function buildConvertOptions(opts: CommanderOpts): ConvertOptions {
     resizeHeight: opts.height ?? null,
     maintainAspectRatio: true,
     removeMetadata: !opts.metadata,
-    // allowUpscaling not exposed in v1
+    // New options
+    grayscale: opts.grayscale,
+    rotate: opts.rotate,
+    autoRotate: opts.autoRotate,
+    flip: opts.flip,
+    flop: opts.flop,
+    background: opts.background,
+    blur: opts.blur,
+    sharpen: opts.sharpen,
+    normalize: opts.normalize,
+    trim: opts.trim,
   };
 }
 

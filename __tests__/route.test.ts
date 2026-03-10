@@ -17,6 +17,10 @@ jest.mock("sharp", () => {
 
 import { processImage, detectFormat } from "@/lib/imageProcessor";
 import { fileTypeFromBuffer } from "file-type";
+import sharp from "sharp";
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const fileTypeMock = require("file-type") as { __setMockResult: (r: unknown) => void };
 
 function makeHeicRequest(): NextRequest {
   const formData = new FormData();
@@ -31,6 +35,28 @@ function makeHeicRequest(): NextRequest {
     method: "POST",
     body: formData,
   });
+}
+
+function makeValidRequest(options: {
+  targetFormat?: string;
+  quality?: string;
+  resizeWidth?: string;
+  skipTargetFormat?: boolean;
+  file?: File;
+} = {}): NextRequest {
+  const formData = new FormData();
+  const fakeBytes = new Uint8Array([0xFF, 0xD8, 0xFF, 0xE0]);
+  formData.append("file", options.file ?? new File([fakeBytes], "photo.jpg", { type: "image/jpeg" }));
+  if (!options.skipTargetFormat) {
+    formData.append("targetFormat", options.targetFormat ?? "webp");
+  }
+  formData.append("quality", options.quality ?? "85");
+  formData.append("maintainAspectRatio", "true");
+  formData.append("removeMetadata", "false");
+  if (options.resizeWidth !== undefined) {
+    formData.append("resizeWidth", options.resizeWidth);
+  }
+  return new NextRequest("http://localhost/api/convert", { method: "POST", body: formData });
 }
 
 describe("POST /api/convert — REQ-302: Live Photo 422 rejection", () => {
@@ -83,24 +109,134 @@ describe("POST /api/convert — REQ-102: filename sanitization", () => {
 });
 
 describe("POST /api/convert — REQ-101: pixel dimension limit (HTTP 422)", () => {
-  it.todo(
-    "returns 422 IMAGE_TOO_LARGE when image pixel count exceeds 25,000,000"
-  );
-  it.todo("returns 200 for an image within the pixel limit");
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (detectFormat as jest.Mock).mockReturnValue("jpeg");
+    (fileTypeFromBuffer as jest.Mock).mockResolvedValue({ mime: "image/jpeg", ext: "jpg" });
+    (sharp as jest.Mock).mockImplementation(() => ({
+      metadata: jest.fn().mockResolvedValue({ width: 100, height: 100 }),
+    }));
+    (processImage as jest.Mock).mockResolvedValue(Buffer.from("out"));
+  });
+
+  it("returns 422 IMAGE_TOO_LARGE when image pixel count exceeds 25,000,000", async () => {
+    (sharp as jest.Mock).mockImplementation(() => ({
+      metadata: jest.fn().mockResolvedValue({ width: 5001, height: 5001 }),
+    }));
+    const req = makeValidRequest();
+    const res = await POST(req);
+    expect(res.status).toBe(422);
+    const body = await res.json();
+    expect(body.error).toBe("IMAGE_TOO_LARGE");
+  });
+
+  it("returns 200 for an image within the pixel limit", async () => {
+    const req = makeValidRequest();
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+  });
 });
 
 describe("POST /api/convert — REQ-104: magic-byte MIME verification (HTTP 415)", () => {
-  it.todo(
-    "returns 415 UNSUPPORTED_FORMAT when file extension is .jpg but magic bytes are not JPEG"
-  );
-  it.todo("passes MIME verification for a valid JPEG file");
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (detectFormat as jest.Mock).mockReturnValue("jpeg");
+    (fileTypeFromBuffer as jest.Mock).mockResolvedValue({ mime: "image/jpeg", ext: "jpg" });
+    (sharp as jest.Mock).mockImplementation(() => ({
+      metadata: jest.fn().mockResolvedValue({ width: 100, height: 100 }),
+    }));
+    (processImage as jest.Mock).mockResolvedValue(Buffer.from("out"));
+  });
+
+  it("returns 415 UNSUPPORTED_FORMAT when file extension is .jpg but magic bytes are not JPEG", async () => {
+    fileTypeMock.__setMockResult(null);
+    const req = makeValidRequest();
+    const res = await POST(req);
+    expect(res.status).toBe(415);
+    const body = await res.json();
+    expect(body.error).toBe("UNSUPPORTED_FORMAT");
+  });
+
+  it("passes MIME verification for a valid JPEG file", async () => {
+    fileTypeMock.__setMockResult({ mime: "image/jpeg", ext: "jpg" });
+    const req = makeValidRequest();
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+  });
 });
 
 describe("POST /api/convert — REQ-501: structured error responses", () => {
-  it.todo("returns 413 FILE_TOO_LARGE with { error, message } when file exceeds 50 MB");
-  it.todo("returns 400 MISSING_FILE with field: 'file' when no file is attached");
-  it.todo("returns 400 MISSING_TARGET_FORMAT with field: 'targetFormat' when targetFormat is absent");
-  it.todo("returns 400 INVALID_QUALITY with field: 'quality' when quality is out of range");
-  it.todo("returns 400 INVALID_DIMENSION with field: 'resizeWidth' when width is non-positive");
-  it.todo("returns 400 UNSUPPORTED_TARGET_FORMAT with field: 'targetFormat' when targetFormat is heic");
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (detectFormat as jest.Mock).mockReturnValue("jpeg");
+    (fileTypeFromBuffer as jest.Mock).mockResolvedValue({ mime: "image/jpeg", ext: "jpg" });
+    (sharp as jest.Mock).mockImplementation(() => ({
+      metadata: jest.fn().mockResolvedValue({ width: 100, height: 100 }),
+    }));
+    (processImage as jest.Mock).mockResolvedValue(Buffer.from("out"));
+  });
+
+  it("returns 413 FILE_TOO_LARGE with { error, message } when file exceeds 50 MB", async () => {
+    const req = new NextRequest("http://localhost/api/convert", { method: "POST" });
+    const fakeFile = { size: 52_428_801, name: "huge.jpg", type: "image/jpeg" };
+    const fakeFormData = { get: (key: string) => key === "file" ? fakeFile : null };
+    (req as unknown as { formData: jest.Mock }).formData = jest.fn().mockResolvedValue(fakeFormData);
+    const res = await POST(req);
+    expect(res.status).toBe(413);
+    const body = await res.json();
+    expect(body.error).toBe("FILE_TOO_LARGE");
+  });
+
+  it("returns 400 MISSING_FILE with field: 'file' when no file is attached", async () => {
+    const req = new NextRequest("http://localhost/api/convert", {
+      method: "POST",
+      body: new FormData(),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toBe("MISSING_FILE");
+    expect(body.field).toBe("file");
+  });
+
+  it("returns 400 MISSING_TARGET_FORMAT with field: 'targetFormat' when targetFormat is absent", async () => {
+    const req = makeValidRequest({ skipTargetFormat: true });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toBe("MISSING_TARGET_FORMAT");
+    expect(body.field).toBe("targetFormat");
+  });
+
+  it("returns 400 INVALID_QUALITY with field: 'quality' when quality is out of range", async () => {
+    const res1 = await POST(makeValidRequest({ quality: "0" }));
+    expect(res1.status).toBe(400);
+    const body1 = await res1.json();
+    expect(body1.error).toBe("INVALID_QUALITY");
+    expect(body1.field).toBe("quality");
+
+    const res2 = await POST(makeValidRequest({ quality: "101" }));
+    expect(res2.status).toBe(400);
+    const body2 = await res2.json();
+    expect(body2.error).toBe("INVALID_QUALITY");
+    expect(body2.field).toBe("quality");
+  });
+
+  it("returns 400 INVALID_DIMENSION with field: 'resizeWidth' when width is non-positive", async () => {
+    const req = makeValidRequest({ resizeWidth: "-5" });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toBe("INVALID_DIMENSION");
+    expect(body.field).toBe("resizeWidth");
+  });
+
+  it("returns 400 UNSUPPORTED_TARGET_FORMAT with field: 'targetFormat' when targetFormat is heic", async () => {
+    const req = makeValidRequest({ targetFormat: "heic" });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toBe("UNSUPPORTED_TARGET_FORMAT");
+    expect(body.field).toBe("targetFormat");
+  });
 });
