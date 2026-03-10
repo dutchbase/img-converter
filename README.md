@@ -1,6 +1,25 @@
 # img-convert
 
-Fast, scriptable image conversion powered by [Sharp](https://sharp.pixelplumbing.com). Ships as an npm package, a CLI, a REST API, and a [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server — making it a first-class tool for both developers and AI agents.
+Fast CLI image converter with Web UI.
+
+Convert images between:
+
+- JPG
+- PNG
+- WebP
+- AVIF
+- GIF
+- TIFF
+
+Built for developers and AI agents.
+
+## Install
+
+```bash
+npx @dutchbase/img-convert
+```
+
+or
 
 ```bash
 npm install -g @dutchbase/img-convert
@@ -16,6 +35,10 @@ img-convert info photo.jpg
 # Give Claude Code native image conversion tools
 img-convert mcp
 ```
+
+---
+
+Fast, scriptable image conversion powered by [Sharp](https://sharp.pixelplumbing.com). Ships as an npm package, a CLI, a REST API, and a [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server — making it a first-class tool for both developers and AI agents.
 
 ---
 
