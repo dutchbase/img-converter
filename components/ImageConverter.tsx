@@ -106,7 +106,9 @@ export default function ImageConverter() {
     if (isConverting || batchItems.length === 0) return;
     setIsConverting(true);
 
-    const limit = pLimit(4);
+    // Match the server-side semaphore limit (lib/processingQueue.ts: Sema(3))
+    // so no request is ever silently queued on the server while we think it's running.
+    const limit = pLimit(3);
     const pendingItems = batchItems.filter((i) => i.status === "pending");
     const currentOptions = options; // snapshot options at click time
 

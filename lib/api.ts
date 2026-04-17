@@ -11,6 +11,7 @@ import path from "path";
 import pLimit from "p-limit";
 import { processImage, getImageMetadata } from "@/lib/imageProcessor";
 import { decodeHeicToBuffer } from "@/lib/heicDecoder";
+import { safeFetch } from "@/lib/safeFetch";
 import { FORMAT_EXTENSIONS } from "@/types/index";
 import type {
   ImageFormat,
@@ -22,7 +23,7 @@ import type {
   BatchApiOptions,
   ConvertOptions,
 } from "@/types/index";
-import { detectFormatFromExt } from "@/cli/helpers";
+import { detectFormatFromExt } from "@/lib/formatUtils";
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -56,14 +57,10 @@ async function resolveInput(input: string | Buffer): Promise<{ buffer: Buffer; s
     return { buffer: input };
   }
 
-  // URL input
+  // URL input — use safeFetch for SSRF protection, timeout, and size limits
   if (input.startsWith("http://") || input.startsWith("https://")) {
-    const res = await fetch(input);
-    if (!res.ok) {
-      throw new Error(`Failed to fetch ${input}: ${res.status} ${res.statusText}`);
-    }
-    const arrayBuf = await res.arrayBuffer();
-    return { buffer: Buffer.from(arrayBuf) };
+    const buffer = await safeFetch(input);
+    return { buffer };
   }
 
   // File path
@@ -89,12 +86,17 @@ export async function convert(
   const { buffer: inputBuffer, sourceFormat } = await resolveInput(input);
 
   let buf = inputBuffer;
+  let effectiveSourceFormat = sourceFormat;
   if (sourceFormat === "heic") {
+    // Pre-decode HEIC → JPEG buffer so processImage receives a Sharp-readable
+    // buffer. Pass undefined as sourceFormat so processImage does NOT attempt a
+    // second HEIC decode on the already-decoded JPEG buffer.
     buf = await decodeHeicToBuffer(buf);
+    effectiveSourceFormat = undefined;
   }
 
   const convertOpts = toConvertOptions(options);
-  const outputBuffer = await processImage(inputBuffer, convertOpts, sourceFormat);
+  const outputBuffer = await processImage(buf, convertOpts, effectiveSourceFormat);
 
   const meta = await getImageMetadata(outputBuffer);
 

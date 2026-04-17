@@ -7,30 +7,10 @@
 import path from "path";
 import { ImageFormat, FORMAT_EXTENSIONS, ConvertOptions } from "@/types/index";
 
-// Extension -> ImageFormat map (lower-cased)
-const EXT_TO_FORMAT: Record<string, ImageFormat> = {
-  ".jpg": "jpeg",
-  ".jpeg": "jpeg",
-  ".png": "png",
-  ".webp": "webp",
-  ".avif": "avif",
-  ".gif": "gif",
-  ".tiff": "tiff",
-  ".tif": "tiff",
-  ".heic": "heic",
-  ".heif": "heic",
-  ".svg": "svg",
-  ".bmp": "bmp",
-};
-
-/**
- * Detect the ImageFormat from a file path's extension.
- * Returns null for unknown extensions.
- */
-export function detectFormatFromExt(filePath: string): ImageFormat | null {
-  const ext = path.extname(filePath).toLowerCase();
-  return EXT_TO_FORMAT[ext] ?? null;
-}
+// Re-export from the shared lib layer so cli/ never defines its own copy.
+// lib/api.ts and cli/ both import from lib/formatUtils to keep the dependency
+// direction strictly: cli/ → lib/ → types/
+export { detectFormatFromExt, EXT_TO_FORMAT } from "@/lib/formatUtils";
 
 /**
  * Build the output file path for a converted image.

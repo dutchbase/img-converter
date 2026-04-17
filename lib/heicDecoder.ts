@@ -16,8 +16,17 @@ export const LIVE_PHOTO_ERROR_CODE = "LIVE_PHOTO_NOT_SUPPORTED";
  * for this project's self-hosted, low-concurrency use case.
  */
 export async function decodeHeicToBuffer(inputBuffer: Buffer): Promise<Buffer> {
+  // Use .slice() to ensure we get a correctly-sized ArrayBuffer view.
+  // inputBuffer.buffer may reference a larger shared ArrayBuffer when the Buffer
+  // was allocated from a pool, causing heic-convert to read garbage beyond the
+  // actual HEIC data.
+  const safeArrayBuffer = inputBuffer.buffer.slice(
+    inputBuffer.byteOffset,
+    inputBuffer.byteOffset + inputBuffer.byteLength
+  );
+
   const images = await convert.all({
-    buffer: inputBuffer.buffer as ArrayBuffer,
+    buffer: safeArrayBuffer,
     format: "JPEG",
     quality: 1,
   });

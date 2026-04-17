@@ -35,12 +35,16 @@ export async function processImage(
     image = image.rotate(options.rotate, { background: bg });
   }
 
-  // Flip (horizontal mirror) and flop (vertical mirror)
+  // Intentional naming inversion between CLI/API and Sharp:
+  //   CLI/API "flip" = horizontal mirror = Sharp's .flop()
+  //   CLI/API "flop" = vertical mirror   = Sharp's .flip()
+  // Sharp names these from the axis of symmetry (flip = vertical axis = horizontal mirror).
+  // Our CLI names them from the axis of motion, which matches user intuition.
   if (options.flip) {
-    image = image.flop();
+    image = image.flop(); // horizontal mirror
   }
   if (options.flop) {
-    image = image.flip();
+    image = image.flip(); // vertical mirror
   }
 
   // Crop before resize
