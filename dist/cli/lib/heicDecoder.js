@@ -21,11 +21,19 @@ exports.LIVE_PHOTO_ERROR_CODE = "LIVE_PHOTO_NOT_SUPPORTED";
  * for this project's self-hosted, low-concurrency use case.
  */
 async function decodeHeicToBuffer(inputBuffer) {
+    // Use .slice() to ensure we get a correctly-sized ArrayBuffer view.
+    // inputBuffer.buffer may reference a larger shared ArrayBuffer when the Buffer
+    // was allocated from a pool, causing heic-convert to read garbage beyond the
+    // actual HEIC data.
+    const safeArrayBuffer = inputBuffer.buffer.slice(inputBuffer.byteOffset, inputBuffer.byteOffset + inputBuffer.byteLength);
     const images = await heic_convert_1.default.all({
-        buffer: inputBuffer.buffer,
+        buffer: safeArrayBuffer,
         format: "JPEG",
         quality: 1,
     });
+    if (!images || images.length === 0) {
+        throw new Error("HEIC decode failed: no images found in buffer");
+    }
     if (images.length > 1) {
         const err = new Error(exports.LIVE_PHOTO_ERROR_CODE);
         err.name = exports.LIVE_PHOTO_ERROR_CODE;

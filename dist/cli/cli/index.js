@@ -44,29 +44,35 @@ const glob_1 = require("glob");
 const p_limit_1 = __importDefault(require("p-limit"));
 const imageProcessor_1 = require("../lib/imageProcessor");
 const heicDecoder_1 = require("../lib/heicDecoder");
+const safeFetch_1 = require("../lib/safeFetch");
 const index_1 = require("../types/index");
 const helpers_1 = require("../cli/helpers");
 // ---------------------------------------------------------------------------
-// readStdin — collect stdin into a single Buffer
+// readStdin — collect stdin into a single Buffer (capped at 100 MB)
 // ---------------------------------------------------------------------------
+const MAX_STDIN_BYTES = 100 * 1024 * 1024; // 100 MB
 function readStdin() {
     return new Promise((resolve, reject) => {
         const chunks = [];
-        process.stdin.on("data", (c) => chunks.push(c));
+        let totalBytes = 0;
+        process.stdin.on("data", (c) => {
+            totalBytes += c.length;
+            if (totalBytes > MAX_STDIN_BYTES) {
+                reject(new Error(`Stdin exceeds ${MAX_STDIN_BYTES / (1024 * 1024)} MB size limit`));
+                process.stdin.destroy();
+                return;
+            }
+            chunks.push(c);
+        });
         process.stdin.on("end", () => resolve(Buffer.concat(chunks)));
         process.stdin.on("error", reject);
     });
 }
 // ---------------------------------------------------------------------------
-// fetchUrl — download an image from a URL
+// fetchUrl — download an image from a URL with SSRF protection
 // ---------------------------------------------------------------------------
 async function fetchUrl(url) {
-    const res = await fetch(url);
-    if (!res.ok) {
-        throw new Error(`Failed to fetch ${url}: ${res.status} ${res.statusText}`);
-    }
-    const arrayBuf = await res.arrayBuffer();
-    return Buffer.from(arrayBuf);
+    return (0, safeFetch_1.safeFetch)(url);
 }
 // ---------------------------------------------------------------------------
 // isUrl — detect if a string is an HTTP/HTTPS URL
@@ -144,6 +150,23 @@ program
     if (!Array.isArray(manifest) || manifest.length === 0) {
         process.stderr.write("Error: manifest must be a non-empty JSON array\n");
         process.exit(1);
+    }
+    // Validate each manifest item has required fields
+    for (let i = 0; i < manifest.length; i++) {
+        const item = manifest[i];
+        if (!item.input || typeof item.input !== "string") {
+            process.stderr.write(`Error: manifest item [${i}] missing required "input" field\n`);
+            process.exit(1);
+        }
+        if (!item.format || typeof item.format !== "string") {
+            process.stderr.write(`Error: manifest item [${i}] missing required "format" field\n`);
+            process.exit(1);
+        }
+        const validFormats = index_1.OUTPUT_FORMATS;
+        if (!validFormats.includes(item.format)) {
+            process.stderr.write(`Error: manifest item [${i}] has invalid format "${item.format}". Valid: ${index_1.OUTPUT_FORMATS.join(", ")}\n`);
+            process.exit(1);
+        }
     }
     const limit = (0, p_limit_1.default)(opts.concurrency);
     const results = [];
@@ -306,6 +329,11 @@ program
     if ((0, helpers_1.isPipeMode)(process.stdin.isTTY, files)) {
         try {
             const inputBuffer = await readStdin();
+            // Detect source format via magic bytes so HEIC via stdin is handled correctly.
+            // detectFormatFromExt cannot be used here (no filename), so we rely on file-type.
+            const { fileTypeFromBuffer } = await Promise.resolve().then(() => __importStar(require("file-type")));
+            const detected = await fileTypeFromBuffer(inputBuffer);
+            const detectedFormat = detected ? (detected.mime === "image/heic" || detected.mime === "image/heif" ? "heic" : undefined) : undefined;
             const convertOptions = (0, helpers_1.buildConvertOptions)({
                 ...opts,
                 format: targetFormat,
@@ -319,7 +347,7 @@ program
                 normalize: opts.normalize,
                 trim: opts.trim,
             });
-            const outputBuffer = await (0, imageProcessor_1.processImage)(inputBuffer, convertOptions);
+            const outputBuffer = await (0, imageProcessor_1.processImage)(inputBuffer, convertOptions, detectedFormat);
             process.stdout.write(outputBuffer);
             process.exit(0);
         }
@@ -441,4 +469,7 @@ program
     }
     process.exit(failCount > 0 ? 1 : 0);
 });
-program.parseAsync(process.argv);
+program.parseAsync(process.argv).catch((err) => {
+    process.stderr.write(`Fatal: ${err.message}\n`);
+    process.exit(1);
+});

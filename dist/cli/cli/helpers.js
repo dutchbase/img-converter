@@ -8,36 +8,19 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.detectFormatFromExt = detectFormatFromExt;
+exports.EXT_TO_FORMAT = exports.detectFormatFromExt = void 0;
 exports.buildOutputPath = buildOutputPath;
 exports.buildConvertOptions = buildConvertOptions;
 exports.formatKB = formatKB;
 exports.isPipeMode = isPipeMode;
 const path_1 = __importDefault(require("path"));
 const index_1 = require("../types/index");
-// Extension -> ImageFormat map (lower-cased)
-const EXT_TO_FORMAT = {
-    ".jpg": "jpeg",
-    ".jpeg": "jpeg",
-    ".png": "png",
-    ".webp": "webp",
-    ".avif": "avif",
-    ".gif": "gif",
-    ".tiff": "tiff",
-    ".tif": "tiff",
-    ".heic": "heic",
-    ".heif": "heic",
-    ".svg": "svg",
-    ".bmp": "bmp",
-};
-/**
- * Detect the ImageFormat from a file path's extension.
- * Returns null for unknown extensions.
- */
-function detectFormatFromExt(filePath) {
-    const ext = path_1.default.extname(filePath).toLowerCase();
-    return EXT_TO_FORMAT[ext] ?? null;
-}
+// Re-export from the shared lib layer so cli/ never defines its own copy.
+// lib/api.ts and cli/ both import from lib/formatUtils to keep the dependency
+// direction strictly: cli/ → lib/ → types/
+var formatUtils_1 = require("../lib/formatUtils");
+Object.defineProperty(exports, "detectFormatFromExt", { enumerable: true, get: function () { return formatUtils_1.detectFormatFromExt; } });
+Object.defineProperty(exports, "EXT_TO_FORMAT", { enumerable: true, get: function () { return formatUtils_1.EXT_TO_FORMAT; } });
 /**
  * Build the output file path for a converted image.
  *
@@ -48,7 +31,9 @@ function detectFormatFromExt(filePath) {
 function buildOutputPath(inputPath, format, outputDir) {
     const dir = outputDir ?? path_1.default.dirname(inputPath);
     const ext = path_1.default.extname(inputPath);
-    const basename = ext ? path_1.default.basename(inputPath, ext) : path_1.default.basename(inputPath);
+    // Sanitize basename to prevent path traversal (e.g. "../../etc/passwd")
+    const rawBasename = ext ? path_1.default.basename(inputPath, ext) : path_1.default.basename(inputPath);
+    const basename = rawBasename.replace(/[^a-zA-Z0-9._-]/g, "_") || "output";
     const newExt = index_1.FORMAT_EXTENSIONS[format];
     return path_1.default.join(dir, `${basename}.${newExt}`);
 }

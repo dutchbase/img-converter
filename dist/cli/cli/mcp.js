@@ -53,21 +53,55 @@ const index_js_1 = require("@modelcontextprotocol/sdk/server/index.js");
 const stdio_js_1 = require("@modelcontextprotocol/sdk/server/stdio.js");
 const types_js_1 = require("@modelcontextprotocol/sdk/types.js");
 const promises_1 = __importDefault(require("fs/promises"));
+const path_1 = __importDefault(require("path"));
 const imageProcessor_1 = require("../lib/imageProcessor");
 const heicDecoder_1 = require("../lib/heicDecoder");
+const safeFetch_1 = require("../lib/safeFetch");
 const index_1 = require("../types/index");
 const helpers_1 = require("../cli/helpers");
+// Read version from package.json at runtime so it never drifts from the published version.
+// Using require() directly — this file compiles to CommonJS (tsconfig.cli.json module: CommonJS).
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { version: PKG_VERSION } = require("../package.json");
+const MAX_BATCH_ITEMS = 100;
+/**
+ * Validate and resolve a file path, ensuring it stays within CWD.
+ * Prevents path-traversal attacks (e.g. ../../etc/passwd).
+ */
+function validatePath(p) {
+    const cwd = process.cwd();
+    const resolved = path_1.default.resolve(cwd, p);
+    if (!resolved.startsWith(cwd + path_1.default.sep) && resolved !== cwd) {
+        throw new Error(`Path "${p}" is outside the allowed directory`);
+    }
+    return resolved;
+}
+/**
+ * Validate output_format against OUTPUT_FORMATS allowlist.
+ */
+function validateOutputFormat(format) {
+    if (!index_1.OUTPUT_FORMATS.includes(format)) {
+        throw new Error(`Invalid output format "${format}". Allowed: ${index_1.OUTPUT_FORMATS.join(", ")}`);
+    }
+    return format;
+}
+/**
+ * Clamp quality to [1, 100].
+ */
+function clampQuality(q) {
+    if (q === undefined)
+        return 85;
+    return Math.max(1, Math.min(100, Math.round(q)));
+}
 async function fetchBuffer(urlOrPath) {
     if (urlOrPath.startsWith("http://") || urlOrPath.startsWith("https://")) {
-        const res = await fetch(urlOrPath);
-        if (!res.ok)
-            throw new Error(`Failed to fetch ${urlOrPath}: ${res.status}`);
-        return Buffer.from(await res.arrayBuffer());
+        return (0, safeFetch_1.safeFetch)(urlOrPath);
     }
-    return promises_1.default.readFile(urlOrPath);
+    const safePath = validatePath(urlOrPath);
+    return promises_1.default.readFile(safePath);
 }
 async function startMcpServer() {
-    const server = new index_js_1.Server({ name: "img-convert", version: "1.0.0" }, {
+    const server = new index_js_1.Server({ name: "img-convert", version: PKG_VERSION }, {
         capabilities: { tools: {} },
         instructions: "Image conversion server. Convert images between formats, get metadata, and batch-process files.",
     });
@@ -118,6 +152,30 @@ async function startMcpServer() {
                         rotate: {
                             type: "number",
                             description: "Rotate by degrees (e.g. 90, 180, 270)",
+                        },
+                        flip: {
+                            type: "boolean",
+                            description: "Flip image horizontally (mirror left-right)",
+                        },
+                        flop: {
+                            type: "boolean",
+                            description: "Flip image vertically (mirror top-bottom)",
+                        },
+                        blur: {
+                            type: "number",
+                            description: "Gaussian blur sigma (0.3–1000). Values <= 0 are ignored.",
+                        },
+                        sharpen: {
+                            type: "boolean",
+                            description: "Apply unsharp mask sharpening",
+                        },
+                        normalize: {
+                            type: "boolean",
+                            description: "Apply automatic contrast enhancement",
+                        },
+                        trim: {
+                            type: "boolean",
+                            description: "Auto-trim whitespace or solid-color borders",
                         },
                         background: {
                             type: "string",
@@ -223,24 +281,34 @@ async function startMcpServer() {
         }
         if (name === "convert_image") {
             const inputPath = args?.input_path;
-            const outputFormat = args?.output_format;
+            const rawFormat = args?.output_format;
             if (!inputPath)
                 throw new Error("input_path is required");
-            if (!outputFormat)
+            if (!rawFormat)
                 throw new Error("output_format is required");
+            const outputFormat = validateOutputFormat(rawFormat);
             const inputBuffer = await fetchBuffer(inputPath);
             const sourceFormat = (0, helpers_1.detectFormatFromExt)(inputPath) ?? undefined;
-            const outputPath = args?.output_path ??
-                (0, helpers_1.buildOutputPath)(inputPath, outputFormat);
+            // Validate output path if provided, otherwise derive from input
+            const rawOutputPath = args?.output_path;
+            const outputPath = rawOutputPath
+                ? validatePath(rawOutputPath)
+                : (0, helpers_1.buildOutputPath)(inputPath, outputFormat);
             const outputBuffer = await (0, imageProcessor_1.processImage)(inputBuffer, {
                 targetFormat: outputFormat,
-                quality: args?.quality ?? 85,
+                quality: clampQuality(args?.quality),
                 resizeWidth: args?.width ?? null,
                 resizeHeight: args?.height ?? null,
                 maintainAspectRatio: true,
                 removeMetadata: args?.remove_metadata ?? false,
                 grayscale: args?.grayscale,
                 rotate: args?.rotate,
+                flip: args?.flip,
+                flop: args?.flop,
+                blur: args?.blur,
+                sharpen: args?.sharpen,
+                normalize: args?.normalize,
+                trim: args?.trim,
                 background: args?.background,
             }, sourceFormat);
             await promises_1.default.writeFile(outputPath, outputBuffer);
@@ -258,7 +326,7 @@ async function startMcpServer() {
                             width: meta.width ?? 0,
                             height: meta.height ?? 0,
                             format: outputFormat,
-                            quality: args?.quality ?? 85,
+                            quality: clampQuality(args?.quality),
                         }, null, 2),
                     },
                 ],
@@ -268,41 +336,51 @@ async function startMcpServer() {
             const items = args?.items;
             if (!items?.length)
                 throw new Error("items array is required and must not be empty");
+            if (items.length > MAX_BATCH_ITEMS) {
+                throw new Error(`Batch limited to ${MAX_BATCH_ITEMS} items, got ${items.length}`);
+            }
             const concurrency = args?.concurrency ?? 4;
             const results = [];
-            // Simple sequential processing for MCP (concurrency handled externally)
-            const limit = concurrency;
-            let active = 0;
-            const queue = [...items];
-            const pending = [];
             const processItem = async (item) => {
-                const inputBuffer = await fetchBuffer(item.input_path);
-                const sourceFormat = (0, helpers_1.detectFormatFromExt)(item.input_path) ?? undefined;
-                const outputPath = item.output_path ??
-                    (0, helpers_1.buildOutputPath)(item.input_path, item.output_format);
-                const outputBuffer = await (0, imageProcessor_1.processImage)(inputBuffer, {
-                    targetFormat: item.output_format,
-                    quality: item.quality ?? 85,
-                    resizeWidth: item.width ?? null,
-                    resizeHeight: item.height ?? null,
-                    maintainAspectRatio: true,
-                    removeMetadata: false,
-                }, sourceFormat);
-                await promises_1.default.writeFile(outputPath, outputBuffer);
-                const meta = await (0, imageProcessor_1.getImageMetadata)(outputBuffer);
-                results.push({
-                    input_path: item.input_path,
-                    output_path: outputPath,
-                    input_bytes: inputBuffer.length,
-                    output_bytes: outputBuffer.length,
-                    width: meta.width ?? 0,
-                    height: meta.height ?? 0,
-                    format: item.output_format,
-                });
+                // Per-item error handling: a failure in one item does not abort the whole batch.
+                try {
+                    const validatedFormat = validateOutputFormat(item.output_format);
+                    const inputBuffer = await fetchBuffer(item.input_path);
+                    const sourceFormat = (0, helpers_1.detectFormatFromExt)(item.input_path) ?? undefined;
+                    const rawOutputPath = item.output_path;
+                    const outputPath = rawOutputPath
+                        ? validatePath(rawOutputPath)
+                        : (0, helpers_1.buildOutputPath)(item.input_path, validatedFormat);
+                    const outputBuffer = await (0, imageProcessor_1.processImage)(inputBuffer, {
+                        targetFormat: validatedFormat,
+                        quality: clampQuality(item.quality),
+                        resizeWidth: item.width ?? null,
+                        resizeHeight: item.height ?? null,
+                        maintainAspectRatio: true,
+                        removeMetadata: false,
+                    }, sourceFormat);
+                    await promises_1.default.writeFile(outputPath, outputBuffer);
+                    const meta = await (0, imageProcessor_1.getImageMetadata)(outputBuffer);
+                    results.push({
+                        input_path: item.input_path,
+                        output_path: outputPath,
+                        input_bytes: inputBuffer.length,
+                        output_bytes: outputBuffer.length,
+                        width: meta.width ?? 0,
+                        height: meta.height ?? 0,
+                        format: validatedFormat,
+                    });
+                }
+                catch (err) {
+                    results.push({
+                        input_path: item.input_path,
+                        error: err.message,
+                    });
+                }
             };
-            // Process with concurrency limit
+            // Process with concurrency limit (use p-limit from top-level mock-compatible import)
             const { default: pLimit } = await Promise.resolve().then(() => __importStar(require("p-limit")));
-            const limiter = pLimit(limit);
+            const limiter = pLimit(concurrency);
             await Promise.all(items.map((item) => limiter(() => processItem(item))));
             return { content: [{ type: "text", text: JSON.stringify(results, null, 2) }] };
         }
