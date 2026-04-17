@@ -98,6 +98,30 @@ export async function startMcpServer(): Promise<void> {
               type: "number",
               description: "Rotate by degrees (e.g. 90, 180, 270)",
             },
+            flip: {
+              type: "boolean",
+              description: "Flip image horizontally (mirror left-right)",
+            },
+            flop: {
+              type: "boolean",
+              description: "Flip image vertically (mirror top-bottom)",
+            },
+            blur: {
+              type: "number",
+              description: "Gaussian blur sigma (0.3–1000). Values <= 0 are ignored.",
+            },
+            sharpen: {
+              type: "boolean",
+              description: "Apply unsharp mask sharpening",
+            },
+            normalize: {
+              type: "boolean",
+              description: "Apply automatic contrast enhancement",
+            },
+            trim: {
+              type: "boolean",
+              description: "Auto-trim whitespace or solid-color borders",
+            },
             background: {
               type: "string",
               description: "Background fill color for transparency (e.g. '#ffffff')",
@@ -233,6 +257,12 @@ export async function startMcpServer(): Promise<void> {
           removeMetadata: (args?.remove_metadata as boolean | undefined) ?? false,
           grayscale: args?.grayscale as boolean | undefined,
           rotate: args?.rotate as number | undefined,
+          flip: args?.flip as boolean | undefined,
+          flop: args?.flop as boolean | undefined,
+          blur: args?.blur as number | undefined,
+          sharpen: args?.sharpen as boolean | undefined,
+          normalize: args?.normalize as boolean | undefined,
+          trim: args?.trim as boolean | undefined,
           background: args?.background as string | undefined,
         },
         sourceFormat

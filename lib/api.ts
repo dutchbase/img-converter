@@ -164,6 +164,15 @@ export async function batch(
           resizeHeight: item.height ?? null,
           maintainAspectRatio: true,
           removeMetadata: item.removeMetadata ?? false,
+          rotate: item.rotate,
+          flip: item.flip,
+          flop: item.flop,
+          grayscale: item.grayscale,
+          blur: item.blur,
+          sharpen: item.sharpen,
+          normalize: item.normalize,
+          trim: item.trim,
+          background: item.background,
         };
 
         const outputBuffer = await processImage(inputBuffer, convertOpts, sourceFormat);
