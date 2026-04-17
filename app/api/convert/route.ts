@@ -68,7 +68,7 @@ function errorResponse(body: ApiErrorResponse, status: number): NextResponse {
 
 export async function POST(req: NextRequest) {
   // Rate limiting
-  const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? req.ip ?? "unknown";
+  const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? req.headers.get("x-real-ip") ?? "unknown";
   if (!checkRateLimit(clientIp)) {
     return errorResponse({ error: "RATE_LIMIT_EXCEEDED", message: "Too many requests. Please try again later." }, 429);
   }
