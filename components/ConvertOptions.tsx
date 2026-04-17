@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { ImageFormat, FORMAT_LABELS, QUALITY_FORMATS, OUTPUT_FORMATS, ConvertOptions } from "@/types/client";
 
 interface ConvertOptionsProps {
@@ -11,6 +12,8 @@ interface ConvertOptionsProps {
 // Output formats only (excludes input-only formats like HEIC — see OUTPUT_FORMATS in types/index.ts)
 
 export default function ConvertOptionsPanel({ sourceFormat, options, onChange }: ConvertOptionsProps) {
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+
   const set = <K extends keyof ConvertOptions>(key: K, value: ConvertOptions[K]) =>
     onChange({ ...options, [key]: value });
 
@@ -68,6 +71,7 @@ export default function ConvertOptionsPanel({ sourceFormat, options, onChange }:
           value={options.quality}
           onChange={(e) => set("quality", parseInt(e.target.value, 10))}
           className="w-full accent-blue-600"
+          aria-label="Quality"
         />
         <div className="flex justify-between text-xs text-neutral-400 dark:text-neutral-500 mt-1">
           <span>Smaller file</span>
@@ -80,8 +84,9 @@ export default function ConvertOptionsPanel({ sourceFormat, options, onChange }:
         <label className="block text-sm font-semibold text-neutral-700 dark:text-neutral-200 mb-2">Resize (optional)</label>
         <div className="flex items-center gap-3">
           <div className="flex-1">
-            <label className="block text-xs text-neutral-500 dark:text-neutral-400 mb-1">Width (px)</label>
+            <label htmlFor="resize-width" className="block text-xs text-neutral-500 dark:text-neutral-400 mb-1">Width (px)</label>
             <input
+              id="resize-width"
               type="number"
               min={1}
               placeholder="e.g. 1920"
@@ -92,8 +97,9 @@ export default function ConvertOptionsPanel({ sourceFormat, options, onChange }:
           </div>
           <span className="mt-5 text-neutral-400 text-lg">×</span>
           <div className="flex-1">
-            <label className="block text-xs text-neutral-500 dark:text-neutral-400 mb-1">Height (px)</label>
+            <label htmlFor="resize-height" className="block text-xs text-neutral-500 dark:text-neutral-400 mb-1">Height (px)</label>
             <input
+              id="resize-height"
               type="number"
               min={1}
               placeholder="e.g. 1080"
@@ -109,6 +115,7 @@ export default function ConvertOptionsPanel({ sourceFormat, options, onChange }:
             checked={options.maintainAspectRatio}
             onChange={(e) => set("maintainAspectRatio", e.target.checked)}
             className="w-4 h-4 accent-blue-600"
+            aria-label="Maintain aspect ratio"
           />
           <span className="text-sm text-neutral-600 dark:text-neutral-300">Maintain aspect ratio</span>
         </label>
@@ -148,6 +155,136 @@ export default function ConvertOptionsPanel({ sourceFormat, options, onChange }:
             Strips EXIF data (GPS location, camera model, timestamps, etc.)
           </span>
         </label>
+      </div>
+
+      {/* Advanced options — collapsible */}
+      <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setAdvancedOpen((o) => !o)}
+          aria-expanded={advancedOpen}
+          className="w-full flex items-center justify-between px-4 py-3 bg-neutral-50 dark:bg-neutral-800 text-sm font-semibold text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-750 transition-colors"
+        >
+          <span>Advanced options</span>
+          <svg
+            className={`w-4 h-4 transition-transform ${advancedOpen ? "rotate-180" : ""}`}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+
+        {advancedOpen && (
+          <div className="px-4 py-4 flex flex-col gap-4 bg-white dark:bg-neutral-900">
+            {/* Rotate */}
+            <div>
+              <label htmlFor="rotate" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+                Rotate (degrees)
+              </label>
+              <input
+                id="rotate"
+                type="number"
+                min={-360}
+                max={360}
+                step={90}
+                placeholder="e.g. 90, 180, 270"
+                value={options.rotate ?? ""}
+                onChange={(e) => set("rotate", e.target.value ? parseFloat(e.target.value) : undefined)}
+                className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-neutral-800 dark:border-neutral-600 dark:text-neutral-200"
+              />
+            </div>
+
+            {/* Blur */}
+            <div>
+              <label htmlFor="blur" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+                Blur (Gaussian sigma, 0.3–100)
+              </label>
+              <input
+                id="blur"
+                type="number"
+                min={0}
+                max={100}
+                step={0.5}
+                placeholder="e.g. 2"
+                value={options.blur ?? ""}
+                onChange={(e) => set("blur", e.target.value ? parseFloat(e.target.value) : undefined)}
+                className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-neutral-800 dark:border-neutral-600 dark:text-neutral-200"
+              />
+            </div>
+
+            {/* Toggles row */}
+            <div className="grid grid-cols-2 gap-3">
+              {/* Grayscale */}
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={options.grayscale ?? false}
+                  onChange={(e) => set("grayscale", e.target.checked || undefined)}
+                  className="w-4 h-4 accent-blue-600"
+                />
+                <span className="text-sm text-neutral-600 dark:text-neutral-300">Grayscale</span>
+              </label>
+
+              {/* Flip (horizontal mirror) */}
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={options.flip ?? false}
+                  onChange={(e) => set("flip", e.target.checked || undefined)}
+                  className="w-4 h-4 accent-blue-600"
+                />
+                <span className="text-sm text-neutral-600 dark:text-neutral-300">Flip horizontal</span>
+              </label>
+
+              {/* Flop (vertical mirror) */}
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={options.flop ?? false}
+                  onChange={(e) => set("flop", e.target.checked || undefined)}
+                  className="w-4 h-4 accent-blue-600"
+                />
+                <span className="text-sm text-neutral-600 dark:text-neutral-300">Flip vertical</span>
+              </label>
+
+              {/* Sharpen */}
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={options.sharpen ?? false}
+                  onChange={(e) => set("sharpen", e.target.checked || undefined)}
+                  className="w-4 h-4 accent-blue-600"
+                />
+                <span className="text-sm text-neutral-600 dark:text-neutral-300">Sharpen</span>
+              </label>
+
+              {/* Normalize */}
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={options.normalize ?? false}
+                  onChange={(e) => set("normalize", e.target.checked || undefined)}
+                  className="w-4 h-4 accent-blue-600"
+                />
+                <span className="text-sm text-neutral-600 dark:text-neutral-300">Normalize contrast</span>
+              </label>
+
+              {/* Trim */}
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={options.trim ?? false}
+                  onChange={(e) => set("trim", e.target.checked || undefined)}
+                  className="w-4 h-4 accent-blue-600"
+                />
+                <span className="text-sm text-neutral-600 dark:text-neutral-300">Trim borders</span>
+              </label>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

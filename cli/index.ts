@@ -7,6 +7,7 @@ import { glob } from "glob";
 import pLimit from "p-limit";
 import { processImage, getImageMetadata } from "@/lib/imageProcessor";
 import { decodeHeicToBuffer } from "@/lib/heicDecoder";
+import { safeFetch } from "@/lib/safeFetch";
 import { OUTPUT_FORMATS, FORMAT_EXTENSIONS, ManifestItem } from "@/types/index";
 import {
   detectFormatFromExt,
@@ -30,15 +31,10 @@ function readStdin(): Promise<Buffer> {
 }
 
 // ---------------------------------------------------------------------------
-// fetchUrl — download an image from a URL
+// fetchUrl — download an image from a URL with SSRF protection
 // ---------------------------------------------------------------------------
 async function fetchUrl(url: string): Promise<Buffer> {
-  const res = await fetch(url);
-  if (!res.ok) {
-    throw new Error(`Failed to fetch ${url}: ${res.status} ${res.statusText}`);
-  }
-  const arrayBuf = await res.arrayBuffer();
-  return Buffer.from(arrayBuf);
+  return safeFetch(url);
 }
 
 // ---------------------------------------------------------------------------
@@ -329,6 +325,12 @@ program
     if (isPipeMode(process.stdin.isTTY, files)) {
       try {
         const inputBuffer = await readStdin();
+        // Detect source format via magic bytes so HEIC via stdin is handled correctly.
+        // detectFormatFromExt cannot be used here (no filename), so we rely on file-type.
+        const { fileTypeFromBuffer } = await import("file-type");
+        const detected = await fileTypeFromBuffer(inputBuffer);
+        const detectedFormat = detected ? (detected.mime === "image/heic" || detected.mime === "image/heif" ? "heic" as const : undefined) : undefined;
+
         const convertOptions = buildConvertOptions({
           ...opts,
           format: targetFormat,
@@ -342,7 +344,7 @@ program
           normalize: opts.normalize,
           trim: opts.trim,
         });
-        const outputBuffer = await processImage(inputBuffer, convertOptions);
+        const outputBuffer = await processImage(inputBuffer, convertOptions, detectedFormat);
         process.stdout.write(outputBuffer);
         process.exit(0);
       } catch (err) {

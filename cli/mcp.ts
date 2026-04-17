@@ -21,22 +21,26 @@ import fs from "fs/promises";
 import path from "path";
 import { processImage, getImageMetadata } from "@/lib/imageProcessor";
 import { decodeHeicToBuffer } from "@/lib/heicDecoder";
+import { safeFetch } from "@/lib/safeFetch";
 import { OUTPUT_FORMATS, FORMAT_EXTENSIONS } from "@/types/index";
 import { detectFormatFromExt, buildOutputPath } from "@/cli/helpers";
 import type { ImageFormat } from "@/types/index";
 
+// Read version from package.json at runtime so it never drifts from the published version.
+// Using require() directly — this file compiles to CommonJS (tsconfig.cli.json module: CommonJS).
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { version: PKG_VERSION } = require("../package.json") as { version: string };
+
 async function fetchBuffer(urlOrPath: string): Promise<Buffer> {
   if (urlOrPath.startsWith("http://") || urlOrPath.startsWith("https://")) {
-    const res = await fetch(urlOrPath);
-    if (!res.ok) throw new Error(`Failed to fetch ${urlOrPath}: ${res.status}`);
-    return Buffer.from(await res.arrayBuffer());
+    return safeFetch(urlOrPath);
   }
   return fs.readFile(urlOrPath);
 }
 
 export async function startMcpServer(): Promise<void> {
   const server = new Server(
-    { name: "img-convert", version: "1.0.0" },
+    { name: "img-convert", version: PKG_VERSION },
     {
       capabilities: { tools: {} },
       instructions:
@@ -93,6 +97,30 @@ export async function startMcpServer(): Promise<void> {
             rotate: {
               type: "number",
               description: "Rotate by degrees (e.g. 90, 180, 270)",
+            },
+            flip: {
+              type: "boolean",
+              description: "Flip image horizontally (mirror left-right)",
+            },
+            flop: {
+              type: "boolean",
+              description: "Flip image vertically (mirror top-bottom)",
+            },
+            blur: {
+              type: "number",
+              description: "Gaussian blur sigma (0.3–1000). Values <= 0 are ignored.",
+            },
+            sharpen: {
+              type: "boolean",
+              description: "Apply unsharp mask sharpening",
+            },
+            normalize: {
+              type: "boolean",
+              description: "Apply automatic contrast enhancement",
+            },
+            trim: {
+              type: "boolean",
+              description: "Auto-trim whitespace or solid-color borders",
             },
             background: {
               type: "string",
@@ -229,6 +257,12 @@ export async function startMcpServer(): Promise<void> {
           removeMetadata: (args?.remove_metadata as boolean | undefined) ?? false,
           grayscale: args?.grayscale as boolean | undefined,
           rotate: args?.rotate as number | undefined,
+          flip: args?.flip as boolean | undefined,
+          flop: args?.flop as boolean | undefined,
+          blur: args?.blur as number | undefined,
+          sharpen: args?.sharpen as boolean | undefined,
+          normalize: args?.normalize as boolean | undefined,
+          trim: args?.trim as boolean | undefined,
           background: args?.background as string | undefined,
         },
         sourceFormat
@@ -277,49 +311,51 @@ export async function startMcpServer(): Promise<void> {
       const concurrency = (args?.concurrency as number | undefined) ?? 4;
       const results: object[] = [];
 
-      // Simple sequential processing for MCP (concurrency handled externally)
-      const limit = concurrency;
-      let active = 0;
-      const queue = [...items];
-      const pending: Promise<void>[] = [];
-
       const processItem = async (item: typeof items[0]): Promise<void> => {
-        const inputBuffer = await fetchBuffer(item.input_path);
-        const sourceFormat = detectFormatFromExt(item.input_path) ?? undefined;
-        const outputPath =
-          item.output_path ??
-          buildOutputPath(item.input_path, item.output_format);
+        // Per-item error handling: a failure in one item does not abort the whole batch.
+        try {
+          const inputBuffer = await fetchBuffer(item.input_path);
+          const sourceFormat = detectFormatFromExt(item.input_path) ?? undefined;
+          const outputPath =
+            item.output_path ??
+            buildOutputPath(item.input_path, item.output_format);
 
-        const outputBuffer = await processImage(
-          inputBuffer,
-          {
-            targetFormat: item.output_format,
-            quality: item.quality ?? 85,
-            resizeWidth: item.width ?? null,
-            resizeHeight: item.height ?? null,
-            maintainAspectRatio: true,
-            removeMetadata: false,
-          },
-          sourceFormat
-        );
+          const outputBuffer = await processImage(
+            inputBuffer,
+            {
+              targetFormat: item.output_format,
+              quality: item.quality ?? 85,
+              resizeWidth: item.width ?? null,
+              resizeHeight: item.height ?? null,
+              maintainAspectRatio: true,
+              removeMetadata: false,
+            },
+            sourceFormat
+          );
 
-        await fs.writeFile(outputPath, outputBuffer);
-        const meta = await getImageMetadata(outputBuffer);
+          await fs.writeFile(outputPath, outputBuffer);
+          const meta = await getImageMetadata(outputBuffer);
 
-        results.push({
-          input_path: item.input_path,
-          output_path: outputPath,
-          input_bytes: inputBuffer.length,
-          output_bytes: outputBuffer.length,
-          width: meta.width ?? 0,
-          height: meta.height ?? 0,
-          format: item.output_format,
-        });
+          results.push({
+            input_path: item.input_path,
+            output_path: outputPath,
+            input_bytes: inputBuffer.length,
+            output_bytes: outputBuffer.length,
+            width: meta.width ?? 0,
+            height: meta.height ?? 0,
+            format: item.output_format,
+          });
+        } catch (err) {
+          results.push({
+            input_path: item.input_path,
+            error: (err as Error).message,
+          });
+        }
       };
 
-      // Process with concurrency limit
+      // Process with concurrency limit (use p-limit from top-level mock-compatible import)
       const { default: pLimit } = await import("p-limit");
-      const limiter = pLimit(limit);
+      const limiter = pLimit(concurrency);
       await Promise.all(items.map((item) => limiter(() => processItem(item))));
 
       return { content: [{ type: "text", text: JSON.stringify(results, null, 2) }] };

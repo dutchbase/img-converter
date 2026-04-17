@@ -157,13 +157,23 @@ export interface ImageInfo {
 }
 
 export interface BatchApiItem {
-  input: string;    // file path or URL
-  output?: string;  // output file path (optional, auto-generated if omitted)
+  input: string;          // file path or URL
+  output?: string;        // output file path (optional, auto-generated if omitted)
   format: ImageFormat;
   quality?: number;
   width?: number;
   height?: number;
   removeMetadata?: boolean;
+  // Advanced processing options — mirrors ConvertApiOptions
+  rotate?: number;
+  flip?: boolean;
+  flop?: boolean;
+  grayscale?: boolean;
+  blur?: number;
+  sharpen?: boolean;
+  normalize?: boolean;
+  trim?: boolean;
+  background?: string;
 }
 
 export interface BatchApiResult {

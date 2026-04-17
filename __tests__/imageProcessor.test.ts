@@ -168,3 +168,160 @@ describe("processImage — REQ-107: upscaling prevention", () => {
     expect(meta.width).toBe(200); // upscaled to 200
   });
 });
+
+// ---------------------------------------------------------------------------
+// New processing option tests (previously untested paths)
+// ---------------------------------------------------------------------------
+
+describe("processImage — rotate", () => {
+  it("rotates image by 90 degrees (swaps width/height)", async () => {
+    // Create 32x16 (wide) image — after 90° rotation it should be 16x32 (tall)
+    const wideBuf = await sharp({
+      create: { width: 32, height: 16, channels: 3, background: { r: 255, g: 0, b: 0 } },
+    })
+      .png()
+      .toBuffer();
+
+    const output = await processImage(wideBuf, {
+      ...baseOptions,
+      rotate: 90,
+    });
+
+    const meta = await sharp(output).metadata();
+    // After 90° rotation, a 32×16 becomes 16×32
+    expect(meta.width).toBe(16);
+    expect(meta.height).toBe(32);
+  });
+});
+
+describe("processImage — flip/flop", () => {
+  it("flip option produces a valid image (horizontal mirror)", async () => {
+    const inputBuf = fs.readFileSync(path.join(FIXTURES, "small.png"));
+    const output = await processImage(inputBuf, { ...baseOptions, flip: true });
+    expect(Buffer.isBuffer(output)).toBe(true);
+    const meta = await sharp(output).metadata();
+    // Dimensions unchanged after flip
+    expect(meta.width).toBe(32);
+    expect(meta.height).toBe(32);
+  });
+
+  it("flop option produces a valid image (vertical mirror)", async () => {
+    const inputBuf = fs.readFileSync(path.join(FIXTURES, "small.png"));
+    const output = await processImage(inputBuf, { ...baseOptions, flop: true });
+    expect(Buffer.isBuffer(output)).toBe(true);
+    const meta = await sharp(output).metadata();
+    expect(meta.width).toBe(32);
+    expect(meta.height).toBe(32);
+  });
+});
+
+describe("processImage — grayscale", () => {
+  it("produces valid output with grayscale option", async () => {
+    const inputBuf = fs.readFileSync(path.join(FIXTURES, "small.png"));
+    const output = await processImage(inputBuf, { ...baseOptions, grayscale: true });
+    expect(Buffer.isBuffer(output)).toBe(true);
+    const meta = await sharp(output).metadata();
+    expect(meta.format).toBe("png");
+  });
+});
+
+describe("processImage — blur", () => {
+  it("produces valid output with blur option", async () => {
+    const inputBuf = fs.readFileSync(path.join(FIXTURES, "small.png"));
+    const output = await processImage(inputBuf, { ...baseOptions, blur: 2 });
+    expect(Buffer.isBuffer(output)).toBe(true);
+  });
+
+  it("does not apply blur when sigma is 0", async () => {
+    const inputBuf = fs.readFileSync(path.join(FIXTURES, "small.png"));
+    // blur: 0 should not invoke the blur pipeline (guard: blur > 0)
+    const output = await processImage(inputBuf, { ...baseOptions, blur: 0 });
+    expect(Buffer.isBuffer(output)).toBe(true);
+  });
+});
+
+describe("processImage — sharpen", () => {
+  it("produces valid output with sharpen option", async () => {
+    const inputBuf = fs.readFileSync(path.join(FIXTURES, "small.png"));
+    const output = await processImage(inputBuf, { ...baseOptions, sharpen: true });
+    expect(Buffer.isBuffer(output)).toBe(true);
+  });
+});
+
+describe("processImage — normalize", () => {
+  it("produces valid output with normalize option", async () => {
+    const inputBuf = fs.readFileSync(path.join(FIXTURES, "small.png"));
+    const output = await processImage(inputBuf, { ...baseOptions, normalize: true });
+    expect(Buffer.isBuffer(output)).toBe(true);
+  });
+});
+
+describe("processImage — GIF output format", () => {
+  it("converts PNG to GIF successfully", async () => {
+    const inputBuf = fs.readFileSync(path.join(FIXTURES, "small.png"));
+    const output = await processImage(inputBuf, { ...baseOptions, targetFormat: "gif" });
+    expect(Buffer.isBuffer(output)).toBe(true);
+    const meta = await sharp(output).metadata();
+    expect(meta.format).toBe("gif");
+  });
+});
+
+describe("processImage — TIFF output format", () => {
+  it("converts PNG to TIFF successfully", async () => {
+    const inputBuf = fs.readFileSync(path.join(FIXTURES, "small.png"));
+    const output = await processImage(inputBuf, { ...baseOptions, targetFormat: "tiff" });
+    expect(Buffer.isBuffer(output)).toBe(true);
+    const meta = await sharp(output).metadata();
+    expect(meta.format).toBe("tiff");
+  });
+});
+
+describe("processImage — crop", () => {
+  it("extracts a region from the image", async () => {
+    const inputBuf = fs.readFileSync(path.join(FIXTURES, "small.png"));
+    const output = await processImage(inputBuf, {
+      ...baseOptions,
+      crop: { left: 0, top: 0, width: 16, height: 16 },
+    });
+    const meta = await sharp(output).metadata();
+    expect(meta.width).toBe(16);
+    expect(meta.height).toBe(16);
+  });
+});
+
+describe("processImage — background fill", () => {
+  it("applies background color for JPEG output (flattens transparency)", async () => {
+    // Create a PNG with alpha channel
+    const alphaBuf = await sharp({
+      create: { width: 32, height: 32, channels: 4, background: { r: 255, g: 0, b: 0, alpha: 0.5 } },
+    })
+      .png()
+      .toBuffer();
+
+    const output = await processImage(alphaBuf, {
+      ...baseOptions,
+      targetFormat: "jpeg",
+      background: "#ffffff",
+    });
+    expect(Buffer.isBuffer(output)).toBe(true);
+    const meta = await sharp(output).metadata();
+    expect(meta.format).toBe("jpeg");
+  });
+});
+
+describe("processImage — autoRotate", () => {
+  it("applies auto-rotation without error", async () => {
+    const inputBuf = fs.readFileSync(path.join(FIXTURES, "small.png"));
+    const output = await processImage(inputBuf, { ...baseOptions, autoRotate: true });
+    expect(Buffer.isBuffer(output)).toBe(true);
+  });
+});
+
+describe("processImage — unsupported format", () => {
+  it("throws for unsupported output format", async () => {
+    const inputBuf = fs.readFileSync(path.join(FIXTURES, "small.png"));
+    await expect(
+      processImage(inputBuf, { ...baseOptions, targetFormat: "bmp" as never })
+    ).rejects.toThrow("Unsupported output format");
+  });
+});

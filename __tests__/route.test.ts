@@ -113,14 +113,14 @@ describe("POST /api/convert — REQ-101: pixel dimension limit (HTTP 422)", () =
     jest.clearAllMocks();
     (detectFormat as jest.Mock).mockReturnValue("jpeg");
     (fileTypeFromBuffer as jest.Mock).mockResolvedValue({ mime: "image/jpeg", ext: "jpg" });
-    (sharp as jest.Mock).mockImplementation(() => ({
+    (sharp as unknown as jest.Mock).mockImplementation(() => ({
       metadata: jest.fn().mockResolvedValue({ width: 100, height: 100 }),
     }));
     (processImage as jest.Mock).mockResolvedValue(Buffer.from("out"));
   });
 
   it("returns 422 IMAGE_TOO_LARGE when image pixel count exceeds 25,000,000", async () => {
-    (sharp as jest.Mock).mockImplementation(() => ({
+    (sharp as unknown as jest.Mock).mockImplementation(() => ({
       metadata: jest.fn().mockResolvedValue({ width: 5001, height: 5001 }),
     }));
     const req = makeValidRequest();
@@ -142,7 +142,7 @@ describe("POST /api/convert — REQ-104: magic-byte MIME verification (HTTP 415)
     jest.clearAllMocks();
     (detectFormat as jest.Mock).mockReturnValue("jpeg");
     (fileTypeFromBuffer as jest.Mock).mockResolvedValue({ mime: "image/jpeg", ext: "jpg" });
-    (sharp as jest.Mock).mockImplementation(() => ({
+    (sharp as unknown as jest.Mock).mockImplementation(() => ({
       metadata: jest.fn().mockResolvedValue({ width: 100, height: 100 }),
     }));
     (processImage as jest.Mock).mockResolvedValue(Buffer.from("out"));
@@ -170,7 +170,7 @@ describe("POST /api/convert — REQ-501: structured error responses", () => {
     jest.clearAllMocks();
     (detectFormat as jest.Mock).mockReturnValue("jpeg");
     (fileTypeFromBuffer as jest.Mock).mockResolvedValue({ mime: "image/jpeg", ext: "jpg" });
-    (sharp as jest.Mock).mockImplementation(() => ({
+    (sharp as unknown as jest.Mock).mockImplementation(() => ({
       metadata: jest.fn().mockResolvedValue({ width: 100, height: 100 }),
     }));
     (processImage as jest.Mock).mockResolvedValue(Buffer.from("out"));

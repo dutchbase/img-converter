@@ -126,6 +126,18 @@ export async function POST(req: NextRequest) {
     // REQ-107: Parse allowUpscaling from formData (only sent when checkbox is checked)
     const allowUpscaling = formData.get("allowUpscaling") === "true";
 
+    // Advanced processing options — all optional
+    const rotateRaw = formData.get("rotate") as string | null;
+    const rotate = rotateRaw !== null && rotateRaw !== "" ? parseFloat(rotateRaw) : undefined;
+    const flip = formData.get("flip") === "true" ? true : undefined;
+    const flop = formData.get("flop") === "true" ? true : undefined;
+    const grayscale = formData.get("grayscale") === "true" ? true : undefined;
+    const blurRaw = formData.get("blur") as string | null;
+    const blur = blurRaw !== null && blurRaw !== "" ? parseFloat(blurRaw) : undefined;
+    const sharpen = formData.get("sharpen") === "true" ? true : undefined;
+    const normalize = formData.get("normalize") === "true" ? true : undefined;
+    const trim = formData.get("trim") === "true" ? true : undefined;
+
     const options: ConvertOptions = {
       targetFormat,
       quality,
@@ -134,6 +146,14 @@ export async function POST(req: NextRequest) {
       maintainAspectRatio,
       removeMetadata,
       allowUpscaling,
+      rotate,
+      flip,
+      flop,
+      grayscale,
+      blur,
+      sharpen,
+      normalize,
+      trim,
     };
 
     await processingQueue.acquire();

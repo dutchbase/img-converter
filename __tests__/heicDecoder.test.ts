@@ -9,13 +9,15 @@ const FAKE_JPEG_AB = FAKE_JPEG_BYTES.buffer.slice(
 ) as ArrayBuffer;
 
 jest.mock("heic-convert", () => {
-  const mockConvert = jest.fn();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mockConvert: any = jest.fn();
   mockConvert.all = jest.fn();
   return mockConvert;
 });
 
 import convert from "heic-convert";
-const mockConvertAll = convert.all as jest.Mock;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const mockConvertAll = (convert as any).all as jest.Mock;
 
 describe("decodeHeicToBuffer", () => {
   beforeEach(() => jest.clearAllMocks());

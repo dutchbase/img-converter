@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import pLimit from "p-limit";
 import { ConvertOptions, BatchItem, BatchStatus } from "@/types/client";
 import DropZone from "./DropZone";
@@ -57,7 +57,8 @@ class ConversionError extends Error {
 
 async function convertSingleItem(
   item: BatchItem,
-  options: ConvertOptions
+  options: ConvertOptions,
+  signal?: AbortSignal
 ): Promise<{ blob: Blob; filename: string; sizeBytes: number }> {
   const formData = new FormData();
   formData.append("file", item.file);
@@ -68,8 +69,17 @@ async function convertSingleItem(
   if (options.resizeWidth) formData.append("resizeWidth", options.resizeWidth.toString());
   if (options.resizeHeight) formData.append("resizeHeight", options.resizeHeight.toString());
   if (options.allowUpscaling) formData.append("allowUpscaling", "true");
+  // Advanced processing options
+  if (options.rotate !== undefined) formData.append("rotate", options.rotate.toString());
+  if (options.flip) formData.append("flip", "true");
+  if (options.flop) formData.append("flop", "true");
+  if (options.grayscale) formData.append("grayscale", "true");
+  if (options.blur !== undefined) formData.append("blur", options.blur.toString());
+  if (options.sharpen) formData.append("sharpen", "true");
+  if (options.normalize) formData.append("normalize", "true");
+  if (options.trim) formData.append("trim", "true");
 
-  const res = await fetch("/api/convert", { method: "POST", body: formData });
+  const res = await fetch("/api/convert", { method: "POST", body: formData, signal });
 
   if (!res.ok) {
     const data = await res.json().catch(() => ({ message: "Conversion failed" }));
@@ -87,6 +97,8 @@ export default function ImageConverter() {
   const [batchItems, setBatchItems] = useState<BatchItem[]>([]);
   const [options, setOptions] = useState<ConvertOptions>(DEFAULT_OPTIONS);
   const [isConverting, setIsConverting] = useState(false);
+  // AbortController for the active batch — used by "Cancel All"
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const handleFilesSelect = useCallback((files: File[]) => {
     const newItems: BatchItem[] = files.map((file) => ({
@@ -106,17 +118,31 @@ export default function ImageConverter() {
     if (isConverting || batchItems.length === 0) return;
     setIsConverting(true);
 
-    const limit = pLimit(4);
+    // Create a new AbortController for this batch run so Cancel All can stop in-flight requests
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
+    // Match the server-side semaphore limit (lib/processingQueue.ts: Sema(3))
+    // so no request is ever silently queued on the server while we think it's running.
+    const limit = pLimit(3);
     const pendingItems = batchItems.filter((i) => i.status === "pending");
     const currentOptions = options; // snapshot options at click time
 
     const tasks = pendingItems.map((item) =>
       limit(async () => {
+        // Skip items queued after a cancel
+        if (abortController.signal.aborted) {
+          setBatchItems((prev) =>
+            prev.map((i) => (i.id === item.id && i.status === "pending" ? { ...i, status: "error" as BatchStatus, error: "Cancelled" } : i))
+          );
+          return;
+        }
+
         setBatchItems((prev) =>
           prev.map((i) => (i.id === item.id ? { ...i, status: "converting" as BatchStatus } : i))
         );
         try {
-          const { blob, filename, sizeBytes } = await convertSingleItem(item, currentOptions);
+          const { blob, filename, sizeBytes } = await convertSingleItem(item, currentOptions, abortController.signal);
           const url = URL.createObjectURL(blob);
           setBatchItems((prev) =>
             prev.map((i) =>
@@ -126,7 +152,8 @@ export default function ImageConverter() {
             )
           );
         } catch (err) {
-          const message = err instanceof Error ? err.message : "Conversion failed";
+          const isAbort = err instanceof Error && (err.name === "AbortError" || abortController.signal.aborted);
+          const message = isAbort ? "Cancelled" : (err instanceof Error ? err.message : "Conversion failed");
           const errorCode = err instanceof ConversionError ? err.errorCode : undefined;
           setBatchItems((prev) =>
             prev.map((i) =>
@@ -138,8 +165,21 @@ export default function ImageConverter() {
     );
 
     await Promise.allSettled(tasks);
+    abortControllerRef.current = null;
     setIsConverting(false);
   }, [isConverting, batchItems, options]);
+
+  const handleCancelAll = useCallback(() => {
+    abortControllerRef.current?.abort();
+    setBatchItems((prev) =>
+      prev.map((i) =>
+        i.status === "converting" || i.status === "pending"
+          ? { ...i, status: "error" as BatchStatus, error: "Cancelled" }
+          : i
+      )
+    );
+    setIsConverting(false);
+  }, []);
 
   const handleRetryItem = useCallback(
     async (id: string) => {
@@ -214,23 +254,35 @@ export default function ImageConverter() {
         />
       )}
 
-      {/* Convert All + Clear queue buttons */}
+      {/* Convert All + Cancel All + Clear queue buttons */}
       {batchItems.length > 0 && (
         <div className="flex flex-col gap-3">
           {!allDone && (
-            <button
-              onClick={handleConvertAll}
-              disabled={isConverting || batchItems.filter((i) => i.status === "pending").length === 0}
-              className="w-full rounded-xl bg-blue-600 text-white font-semibold px-6 py-3.5 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-            >
+            <>
+              <button
+                onClick={handleConvertAll}
+                disabled={isConverting || batchItems.filter((i) => i.status === "pending").length === 0}
+                aria-label="Convert all pending images"
+                className="w-full rounded-xl bg-blue-600 text-white font-semibold px-6 py-3.5 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+              >
+                {isConverting && (
+                  <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                  </svg>
+                )}
+                {convertButtonText}
+              </button>
               {isConverting && (
-                <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-                </svg>
+                <button
+                  onClick={handleCancelAll}
+                  aria-label="Cancel all conversions"
+                  className="w-full rounded-xl border border-red-300 text-red-600 font-semibold px-6 py-3 hover:bg-red-50 transition-colors dark:border-red-700 dark:text-red-400 dark:hover:bg-red-950"
+                >
+                  Cancel All
+                </button>
               )}
-              {convertButtonText}
-            </button>
+            </>
           )}
           {allDone && (
             <button
