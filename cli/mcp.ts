@@ -31,11 +31,45 @@ import type { ImageFormat } from "@/types/index";
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { version: PKG_VERSION } = require("../package.json") as { version: string };
 
+const MAX_BATCH_ITEMS = 100;
+
+/**
+ * Validate and resolve a file path, ensuring it stays within CWD.
+ * Prevents path-traversal attacks (e.g. ../../etc/passwd).
+ */
+function validatePath(p: string): string {
+  const cwd = process.cwd();
+  const resolved = path.resolve(cwd, p);
+  if (!resolved.startsWith(cwd + path.sep) && resolved !== cwd) {
+    throw new Error(`Path "${p}" is outside the allowed directory`);
+  }
+  return resolved;
+}
+
+/**
+ * Validate output_format against OUTPUT_FORMATS allowlist.
+ */
+function validateOutputFormat(format: string): ImageFormat {
+  if (!(OUTPUT_FORMATS as string[]).includes(format)) {
+    throw new Error(`Invalid output format "${format}". Allowed: ${OUTPUT_FORMATS.join(", ")}`);
+  }
+  return format as ImageFormat;
+}
+
+/**
+ * Clamp quality to [1, 100].
+ */
+function clampQuality(q: number | undefined): number {
+  if (q === undefined) return 85;
+  return Math.max(1, Math.min(100, Math.round(q)));
+}
+
 async function fetchBuffer(urlOrPath: string): Promise<Buffer> {
   if (urlOrPath.startsWith("http://") || urlOrPath.startsWith("https://")) {
     return safeFetch(urlOrPath);
   }
-  return fs.readFile(urlOrPath);
+  const safePath = validatePath(urlOrPath);
+  return fs.readFile(safePath);
 }
 
 export async function startMcpServer(): Promise<void> {
@@ -236,21 +270,25 @@ export async function startMcpServer(): Promise<void> {
 
     if (name === "convert_image") {
       const inputPath = args?.input_path as string;
-      const outputFormat = args?.output_format as ImageFormat;
+      const rawFormat = args?.output_format as string;
       if (!inputPath) throw new Error("input_path is required");
-      if (!outputFormat) throw new Error("output_format is required");
+      if (!rawFormat) throw new Error("output_format is required");
+      const outputFormat = validateOutputFormat(rawFormat);
 
       const inputBuffer = await fetchBuffer(inputPath);
       const sourceFormat = detectFormatFromExt(inputPath) ?? undefined;
-      const outputPath =
-        (args?.output_path as string | undefined) ??
-        buildOutputPath(inputPath, outputFormat);
+
+      // Validate output path if provided, otherwise derive from input
+      const rawOutputPath = args?.output_path as string | undefined;
+      const outputPath = rawOutputPath
+        ? validatePath(rawOutputPath)
+        : buildOutputPath(inputPath, outputFormat);
 
       const outputBuffer = await processImage(
         inputBuffer,
         {
           targetFormat: outputFormat,
-          quality: (args?.quality as number | undefined) ?? 85,
+          quality: clampQuality(args?.quality as number | undefined),
           resizeWidth: (args?.width as number | undefined) ?? null,
           resizeHeight: (args?.height as number | undefined) ?? null,
           maintainAspectRatio: true,
@@ -287,7 +325,7 @@ export async function startMcpServer(): Promise<void> {
                 width: meta.width ?? 0,
                 height: meta.height ?? 0,
                 format: outputFormat,
-                quality: (args?.quality as number | undefined) ?? 85,
+                quality: clampQuality(args?.quality as number | undefined),
               },
               null,
               2
@@ -300,13 +338,16 @@ export async function startMcpServer(): Promise<void> {
     if (name === "batch_convert") {
       const items = args?.items as Array<{
         input_path: string;
-        output_format: ImageFormat;
+        output_format: string;
         output_path?: string;
         quality?: number;
         width?: number;
         height?: number;
       }>;
       if (!items?.length) throw new Error("items array is required and must not be empty");
+      if (items.length > MAX_BATCH_ITEMS) {
+        throw new Error(`Batch limited to ${MAX_BATCH_ITEMS} items, got ${items.length}`);
+      }
 
       const concurrency = (args?.concurrency as number | undefined) ?? 4;
       const results: object[] = [];
@@ -314,17 +355,19 @@ export async function startMcpServer(): Promise<void> {
       const processItem = async (item: typeof items[0]): Promise<void> => {
         // Per-item error handling: a failure in one item does not abort the whole batch.
         try {
+          const validatedFormat = validateOutputFormat(item.output_format);
           const inputBuffer = await fetchBuffer(item.input_path);
           const sourceFormat = detectFormatFromExt(item.input_path) ?? undefined;
-          const outputPath =
-            item.output_path ??
-            buildOutputPath(item.input_path, item.output_format);
+          const rawOutputPath = item.output_path;
+          const outputPath = rawOutputPath
+            ? validatePath(rawOutputPath)
+            : buildOutputPath(item.input_path, validatedFormat);
 
           const outputBuffer = await processImage(
             inputBuffer,
             {
-              targetFormat: item.output_format,
-              quality: item.quality ?? 85,
+              targetFormat: validatedFormat,
+              quality: clampQuality(item.quality),
               resizeWidth: item.width ?? null,
               resizeHeight: item.height ?? null,
               maintainAspectRatio: true,
@@ -343,7 +386,7 @@ export async function startMcpServer(): Promise<void> {
             output_bytes: outputBuffer.length,
             width: meta.width ?? 0,
             height: meta.height ?? 0,
-            format: item.output_format,
+            format: validatedFormat,
           });
         } catch (err) {
           results.push({
