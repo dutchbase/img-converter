@@ -69,6 +69,7 @@ export default function ConvertOptionsPanel({ sourceFormat, options, onChange }:
           min={1}
           max={100}
           value={options.quality}
+          disabled={!qualityApplies}
           onChange={(e) => set("quality", parseInt(e.target.value, 10))}
           className="w-full accent-blue-600"
           aria-label="Quality"

@@ -36,6 +36,7 @@ export default function DarkModeToggle() {
 
   return (
     <button
+      data-testid="dark-mode-toggle"
       onClick={toggle}
       aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
       title={dark ? "Switch to light mode" : "Switch to dark mode"}
