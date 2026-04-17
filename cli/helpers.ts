@@ -26,7 +26,9 @@ export function buildOutputPath(
 ): string {
   const dir = outputDir ?? path.dirname(inputPath);
   const ext = path.extname(inputPath);
-  const basename = ext ? path.basename(inputPath, ext) : path.basename(inputPath);
+  // Sanitize basename to prevent path traversal (e.g. "../../etc/passwd")
+  const rawBasename = ext ? path.basename(inputPath, ext) : path.basename(inputPath);
+  const basename = rawBasename.replace(/[^a-zA-Z0-9._-]/g, "_") || "output";
   const newExt = FORMAT_EXTENSIONS[format];
   return path.join(dir, `${basename}.${newExt}`);
 }

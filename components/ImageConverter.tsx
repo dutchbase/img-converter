@@ -199,9 +199,14 @@ export default function ImageConverter() {
       if (!item || item.status !== "error") return;
       const currentOptions = options;
 
+      // Revoke previous blob URL before retry to prevent memory leak
+      if (item.result?.url) {
+        URL.revokeObjectURL(item.result.url);
+      }
+
       setBatchItems((prev) =>
         prev.map((i) =>
-          i.id === id ? { ...i, status: "converting" as BatchStatus, error: undefined, errorCode: undefined } : i
+          i.id === id ? { ...i, status: "converting" as BatchStatus, error: undefined, errorCode: undefined, result: undefined } : i
         )
       );
 
