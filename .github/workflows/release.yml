@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: npm
     permissions:
-      contents: read
+      contents: write  # Required to create GitHub releases
       id-token: write  # Required for npm provenance + OIDC trusted publishing
 
     steps:
@@ -38,7 +38,17 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Publish to npm
-        run: npm publish
+      - name: Publish to npm with provenance
+        run: npm publish --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "$TAG" \
+            --title "$TAG" \
+            --generate-notes \
+            --verify-tag
