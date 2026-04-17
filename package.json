@@ -66,8 +66,8 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.27.1",
     "commander": "^14.0.3",
-    "file-type": "^21.3.0",
-    "glob": "^10.5.0",
+    "file-type": "^22.0.1",
+    "glob": "^13.0.6",
     "heic-convert": "^2.1.0",
     "p-limit": "^7.3.0",
     "sharp": "0.34.5",
