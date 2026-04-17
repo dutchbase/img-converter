@@ -5,7 +5,8 @@ import { decodeHeicToBuffer } from "@/lib/heicDecoder";
 export async function processImage(
   buffer: Buffer,
   options: ConvertOptions,
-  sourceFormat?: ImageFormat
+  sourceFormat?: ImageFormat,
+  precomputedMeta?: sharp.Metadata
 ): Promise<Buffer> {
   // HEIC/HEIF pre-decode step — must run before Sharp pipeline (Sharp cannot read HEIC)
   if (sourceFormat === "heic") {
@@ -13,7 +14,8 @@ export async function processImage(
   }
 
   // REQ-101: Guard against decompression bombs
-  const meta = await sharp(buffer).metadata();
+  // Use pre-computed metadata when available to avoid a redundant Sharp read
+  const meta = precomputedMeta ?? await sharp(buffer).metadata();
   if ((meta.width ?? 0) * (meta.height ?? 0) > 25_000_000) {
     throw new Error("IMAGE_TOO_LARGE");
   }
@@ -31,6 +33,10 @@ export async function processImage(
   if (options.autoRotate) {
     image = image.rotate();
   } else if (options.rotate !== undefined && options.rotate !== 0) {
+    // Validate rotate range
+    if (options.rotate < -360 || options.rotate > 360) {
+      throw new Error("Rotate must be between -360 and 360 degrees");
+    }
     const bg = options.background ?? "#000000";
     image = image.rotate(options.rotate, { background: bg });
   }
@@ -79,9 +85,10 @@ export async function processImage(
     image = image.normalize();
   }
 
-  // Blur (Gaussian)
+  // Blur (Gaussian) — clamp sigma to [0.3, 100]
   if (options.blur !== undefined && options.blur > 0) {
-    image = image.blur(options.blur);
+    const clampedBlur = Math.max(0.3, Math.min(100, options.blur));
+    image = image.blur(clampedBlur);
   }
 
   // Sharpen (unsharp mask)
@@ -95,7 +102,8 @@ export async function processImage(
   }
 
   // Background fill (for transparency → opaque format conversion)
-  if (options.background && options.targetFormat === "jpeg") {
+  // Both JPEG and TIFF do not support alpha — flatten with background color
+  if (options.background && (options.targetFormat === "jpeg" || options.targetFormat === "tiff")) {
     image = image.flatten({ background: options.background });
   }
 

@@ -7,6 +7,7 @@ import {
   ImageFormat,
   FORMAT_MIME,
   FORMAT_EXTENSIONS,
+  OUTPUT_FORMATS,
   INPUT_ONLY_FORMATS,
   FORMAT_LABELS,
   ApiErrorResponse,
@@ -58,6 +59,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Validate against OUTPUT_FORMATS allowlist (strict positive-list check)
+    if (!(OUTPUT_FORMATS as string[]).includes(targetFormat)) {
+      return errorResponse(
+        {
+          error: "UNSUPPORTED_TARGET_FORMAT",
+          message: `"${targetFormat}" is not a supported output format. Allowed: ${OUTPUT_FORMATS.join(", ")}`,
+          field: "targetFormat",
+        },
+        400
+      );
+    }
+
     if (INPUT_ONLY_FORMATS.includes(targetFormat as ImageFormat)) {
       return errorResponse(
         {
@@ -71,6 +84,11 @@ export async function POST(req: NextRequest) {
 
     // Convert to buffer for security checks and processing
     const inputBuffer = Buffer.from(await file.arrayBuffer());
+
+    // Server-side buffer length check (defense-in-depth: file.size can be spoofed)
+    if (inputBuffer.length > MAX_FILE_SIZE) {
+      return errorResponse({ error: "FILE_TOO_LARGE", message: "File exceeds 50 MB limit" }, 413);
+    }
 
     // REQ-104: Magic-byte MIME verification — authoritative security gate
     // Use dynamic import to avoid ERR_REQUIRE_ESM in Next.js CJS context
@@ -159,7 +177,7 @@ export async function POST(req: NextRequest) {
     await processingQueue.acquire();
     let outputBuffer: Buffer;
     try {
-      outputBuffer = await processImage(inputBuffer, options, sourceFormat ?? undefined);
+      outputBuffer = await processImage(inputBuffer, options, sourceFormat ?? undefined, meta);
     } catch (processErr) {
       if (
         processErr instanceof Error &&
