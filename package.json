@@ -40,7 +40,7 @@
     }
   },
   "bin": {
-    "img-convert": "./bin/img-convert"
+    "img-convert": "bin/img-convert"
   },
   "publishConfig": {
     "access": "public"
