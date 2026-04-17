@@ -32,6 +32,8 @@ export function isAnimatedGif(bytes: Uint8Array): boolean {
   return false;
 }
 
+const MAX_BATCH_FILES = 200;
+
 const DEFAULT_OPTIONS: ConvertOptions = {
   targetFormat: "webp",
   quality: 85,
@@ -100,14 +102,24 @@ export default function ImageConverter() {
   // AbortController for the active batch — used by "Cancel All"
   const abortControllerRef = useRef<AbortController | null>(null);
 
+  const [batchError, setBatchError] = useState<string | null>(null);
+
   const handleFilesSelect = useCallback((files: File[]) => {
+    setBatchError(null);
     const newItems: BatchItem[] = files.map((file) => ({
       id: crypto.randomUUID(),
       file,
       status: "pending" as BatchStatus,
       originalSize: file.size,
     }));
-    setBatchItems((prev) => [...prev, ...newItems]);
+    setBatchItems((prev) => {
+      const combined = [...prev, ...newItems];
+      if (combined.length > MAX_BATCH_FILES) {
+        setBatchError(`Batch limited to ${MAX_BATCH_FILES} files. ${combined.length - MAX_BATCH_FILES} file(s) were not added.`);
+        return combined.slice(0, MAX_BATCH_FILES);
+      }
+      return combined;
+    });
   }, []);
 
   const handleRemoveItem = useCallback((id: string) => {
@@ -232,6 +244,13 @@ export default function ImageConverter() {
 
   return (
     <div className="w-full max-w-2xl mx-auto flex flex-col gap-6">
+      {/* Batch limit warning */}
+      {batchError && (
+        <div className="rounded-lg bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 text-sm dark:bg-amber-950 dark:border-amber-800 dark:text-amber-200">
+          {batchError}
+        </div>
+      )}
+
       {/* Drop zone — locked during conversion (REQ-201, locked decision) */}
       <DropZone onFilesSelect={handleFilesSelect} disabled={isConverting} />
 

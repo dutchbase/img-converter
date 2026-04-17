@@ -16,6 +16,40 @@ import {
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
 const MAX_PIXELS = 25_000_000; // 25 megapixels
 
+// ---------------------------------------------------------------------------
+// Simple in-memory rate limiter: 30 requests per minute per IP
+// ---------------------------------------------------------------------------
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_MAX = 30;
+
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip);
+
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return true;
+  }
+
+  entry.count++;
+  if (entry.count > RATE_LIMIT_MAX) {
+    return false;
+  }
+  return true;
+}
+
+// Periodically clean up stale entries to prevent unbounded growth
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, entry] of rateLimitMap) {
+    if (now > entry.resetAt) {
+      rateLimitMap.delete(ip);
+    }
+  }
+}, RATE_LIMIT_WINDOW_MS).unref();
+
 /**
  * Sanitizes a raw filename for safe use in Content-Disposition headers.
  * Strips any character not in [a-zA-Z0-9._-] and falls back to "converted"
@@ -33,6 +67,12 @@ function errorResponse(body: ApiErrorResponse, status: number): NextResponse {
 }
 
 export async function POST(req: NextRequest) {
+  // Rate limiting
+  const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? req.ip ?? "unknown";
+  if (!checkRateLimit(clientIp)) {
+    return errorResponse({ error: "RATE_LIMIT_EXCEEDED", message: "Too many requests. Please try again later." }, 429);
+  }
+
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File | null;

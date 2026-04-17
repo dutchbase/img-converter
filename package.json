@@ -66,7 +66,9 @@
     "glob": "^10.5.0",
     "heic-convert": "^2.1.0",
     "p-limit": "^7.3.0",
-    "sharp": "^0.34.5"
+    "sharp": "0.34.5",
+    "async-sema": "^3.1.1",
+    "client-zip": "^2.5.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",
@@ -79,8 +81,6 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "async-sema": "^3.1.1",
-    "client-zip": "^2.5.0",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "jest": "^30.2.0",
