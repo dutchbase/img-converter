@@ -31,6 +31,10 @@ export async function decodeHeicToBuffer(inputBuffer: Buffer): Promise<Buffer> {
     quality: 1,
   });
 
+  if (!images || images.length === 0) {
+    throw new Error("HEIC decode failed: no images found in buffer");
+  }
+
   if (images.length > 1) {
     const err = new Error(LIVE_PHOTO_ERROR_CODE);
     err.name = LIVE_PHOTO_ERROR_CODE;

@@ -18,11 +18,23 @@ const path_1 = __importDefault(require("path"));
 const p_limit_1 = __importDefault(require("p-limit"));
 const imageProcessor_1 = require("../lib/imageProcessor");
 const heicDecoder_1 = require("../lib/heicDecoder");
+const safeFetch_1 = require("../lib/safeFetch");
 const index_1 = require("../types/index");
-const helpers_1 = require("../cli/helpers");
+const processingQueue_1 = require("../lib/processingQueue");
+const formatUtils_1 = require("../lib/formatUtils");
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
+/**
+ * Validate that a file path is within CWD to prevent path traversal.
+ */
+function validateFilePath(filePath) {
+    const cwd = process.cwd();
+    const resolved = path_1.default.resolve(cwd, filePath);
+    if (!resolved.startsWith(cwd + path_1.default.sep) && resolved !== cwd) {
+        throw new Error(`Path "${filePath}" is outside the allowed directory`);
+    }
+}
 function toConvertOptions(opts) {
     return {
         targetFormat: opts.format,
@@ -49,18 +61,15 @@ async function resolveInput(input) {
     if (Buffer.isBuffer(input)) {
         return { buffer: input };
     }
-    // URL input
+    // URL input — use safeFetch for SSRF protection, timeout, and size limits
     if (input.startsWith("http://") || input.startsWith("https://")) {
-        const res = await fetch(input);
-        if (!res.ok) {
-            throw new Error(`Failed to fetch ${input}: ${res.status} ${res.statusText}`);
-        }
-        const arrayBuf = await res.arrayBuffer();
-        return { buffer: Buffer.from(arrayBuf) };
+        const buffer = await (0, safeFetch_1.safeFetch)(input);
+        return { buffer };
     }
-    // File path
+    // File path — validate within CWD
+    validateFilePath(input);
     const buffer = await promises_1.default.readFile(input);
-    const sourceFormat = (0, helpers_1.detectFormatFromExt)(input) ?? undefined;
+    const sourceFormat = (0, formatUtils_1.detectFormatFromExt)(input) ?? undefined;
     return { buffer, sourceFormat };
 }
 // ---------------------------------------------------------------------------
@@ -75,11 +84,16 @@ async function resolveInput(input) {
 async function convert(input, options) {
     const { buffer: inputBuffer, sourceFormat } = await resolveInput(input);
     let buf = inputBuffer;
+    let effectiveSourceFormat = sourceFormat;
     if (sourceFormat === "heic") {
+        // Pre-decode HEIC → JPEG buffer so processImage receives a Sharp-readable
+        // buffer. Pass undefined as sourceFormat so processImage does NOT attempt a
+        // second HEIC decode on the already-decoded JPEG buffer.
         buf = await (0, heicDecoder_1.decodeHeicToBuffer)(buf);
+        effectiveSourceFormat = undefined;
     }
     const convertOpts = toConvertOptions(options);
-    const outputBuffer = await (0, imageProcessor_1.processImage)(inputBuffer, convertOpts, sourceFormat);
+    const outputBuffer = await (0, imageProcessor_1.processImage)(buf, convertOpts, effectiveSourceFormat);
     const meta = await (0, imageProcessor_1.getImageMetadata)(outputBuffer);
     return {
         buffer: outputBuffer,
@@ -124,7 +138,7 @@ async function batch(items, batchOpts = {}) {
     const concurrency = batchOpts.concurrency ?? 4;
     const outputDir = batchOpts.outputDir;
     const limit = (0, p_limit_1.default)(concurrency);
-    const results = await Promise.all(items.map((item) => limit(async () => {
+    const settled = await Promise.allSettled(items.map((item) => limit(async () => {
         const { buffer: inputBuffer, sourceFormat } = await resolveInput(item.input);
         const quality = item.quality ?? 85;
         const convertOpts = {
@@ -134,8 +148,24 @@ async function batch(items, batchOpts = {}) {
             resizeHeight: item.height ?? null,
             maintainAspectRatio: true,
             removeMetadata: item.removeMetadata ?? false,
+            rotate: item.rotate,
+            flip: item.flip,
+            flop: item.flop,
+            grayscale: item.grayscale,
+            blur: item.blur,
+            sharpen: item.sharpen,
+            normalize: item.normalize,
+            trim: item.trim,
+            background: item.background,
         };
-        const outputBuffer = await (0, imageProcessor_1.processImage)(inputBuffer, convertOpts, sourceFormat);
+        await processingQueue_1.processingQueue.acquire();
+        let outputBuffer;
+        try {
+            outputBuffer = await (0, imageProcessor_1.processImage)(inputBuffer, convertOpts, sourceFormat);
+        }
+        finally {
+            processingQueue_1.processingQueue.release();
+        }
         const meta = await (0, imageProcessor_1.getImageMetadata)(outputBuffer);
         // Determine output path
         let outputPath = item.output;
@@ -158,5 +188,13 @@ async function batch(items, batchOpts = {}) {
             quality,
         };
     })));
+    // Return results for fulfilled items, re-throw first rejection if all failed
+    const results = [];
+    for (const result of settled) {
+        if (result.status === "fulfilled") {
+            results.push(result.value);
+        }
+        // Rejected items are silently skipped — caller gets partial results
+    }
     return results;
 }

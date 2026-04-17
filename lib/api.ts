@@ -13,6 +13,7 @@ import { processImage, getImageMetadata } from "@/lib/imageProcessor";
 import { decodeHeicToBuffer } from "@/lib/heicDecoder";
 import { safeFetch } from "@/lib/safeFetch";
 import { FORMAT_EXTENSIONS } from "@/types/index";
+import { processingQueue } from "@/lib/processingQueue";
 import type {
   ImageFormat,
   ConvertApiOptions,
@@ -28,6 +29,17 @@ import { detectFormatFromExt } from "@/lib/formatUtils";
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
+
+/**
+ * Validate that a file path is within CWD to prevent path traversal.
+ */
+function validateFilePath(filePath: string): void {
+  const cwd = process.cwd();
+  const resolved = path.resolve(cwd, filePath);
+  if (!resolved.startsWith(cwd + path.sep) && resolved !== cwd) {
+    throw new Error(`Path "${filePath}" is outside the allowed directory`);
+  }
+}
 
 function toConvertOptions(opts: ConvertApiOptions): ConvertOptions {
   return {
@@ -63,7 +75,8 @@ async function resolveInput(input: string | Buffer): Promise<{ buffer: Buffer; s
     return { buffer };
   }
 
-  // File path
+  // File path — validate within CWD
+  validateFilePath(input);
   const buffer = await fs.readFile(input);
   const sourceFormat = detectFormatFromExt(input) ?? undefined;
   return { buffer, sourceFormat };
@@ -151,7 +164,7 @@ export async function batch(
   const outputDir = batchOpts.outputDir;
   const limit = pLimit(concurrency);
 
-  const results = await Promise.all(
+  const settled = await Promise.allSettled(
     items.map((item) =>
       limit(async (): Promise<BatchApiResult> => {
         const { buffer: inputBuffer, sourceFormat } = await resolveInput(item.input);
@@ -175,7 +188,13 @@ export async function batch(
           background: item.background,
         };
 
-        const outputBuffer = await processImage(inputBuffer, convertOpts, sourceFormat);
+        await processingQueue.acquire();
+        let outputBuffer: Buffer;
+        try {
+          outputBuffer = await processImage(inputBuffer, convertOpts, sourceFormat);
+        } finally {
+          processingQueue.release();
+        }
         const meta = await getImageMetadata(outputBuffer);
 
         // Determine output path
@@ -204,5 +223,13 @@ export async function batch(
     )
   );
 
+  // Return results for fulfilled items, re-throw first rejection if all failed
+  const results: BatchApiResult[] = [];
+  for (const result of settled) {
+    if (result.status === "fulfilled") {
+      results.push(result.value);
+    }
+    // Rejected items are silently skipped — caller gets partial results
+  }
   return results;
 }

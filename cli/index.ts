@@ -19,12 +19,23 @@ import {
 import type { ImageFormat } from "@/types/index";
 
 // ---------------------------------------------------------------------------
-// readStdin — collect stdin into a single Buffer
+// readStdin — collect stdin into a single Buffer (capped at 100 MB)
 // ---------------------------------------------------------------------------
+const MAX_STDIN_BYTES = 100 * 1024 * 1024; // 100 MB
+
 function readStdin(): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
-    process.stdin.on("data", (c: Buffer) => chunks.push(c));
+    let totalBytes = 0;
+    process.stdin.on("data", (c: Buffer) => {
+      totalBytes += c.length;
+      if (totalBytes > MAX_STDIN_BYTES) {
+        reject(new Error(`Stdin exceeds ${MAX_STDIN_BYTES / (1024 * 1024)} MB size limit`));
+        process.stdin.destroy();
+        return;
+      }
+      chunks.push(c);
+    });
     process.stdin.on("end", () => resolve(Buffer.concat(chunks)));
     process.stdin.on("error", reject);
   });
@@ -117,6 +128,24 @@ program
     if (!Array.isArray(manifest) || manifest.length === 0) {
       process.stderr.write("Error: manifest must be a non-empty JSON array\n");
       process.exit(1);
+    }
+
+    // Validate each manifest item has required fields
+    for (let i = 0; i < manifest.length; i++) {
+      const item = manifest[i];
+      if (!item.input || typeof item.input !== "string") {
+        process.stderr.write(`Error: manifest item [${i}] missing required "input" field\n`);
+        process.exit(1);
+      }
+      if (!item.format || typeof item.format !== "string") {
+        process.stderr.write(`Error: manifest item [${i}] missing required "format" field\n`);
+        process.exit(1);
+      }
+      const validFormats: string[] = OUTPUT_FORMATS;
+      if (!validFormats.includes(item.format)) {
+        process.stderr.write(`Error: manifest item [${i}] has invalid format "${item.format}". Valid: ${OUTPUT_FORMATS.join(", ")}\n`);
+        process.exit(1);
+      }
     }
 
     const limit = pLimit(opts.concurrency);
@@ -476,4 +505,7 @@ program
     process.exit(failCount > 0 ? 1 : 0);
   });
 
-program.parseAsync(process.argv);
+program.parseAsync(process.argv).catch((err) => {
+  process.stderr.write(`Fatal: ${(err as Error).message}\n`);
+  process.exit(1);
+});

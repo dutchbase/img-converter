@@ -8,17 +8,18 @@ exports.detectFormat = detectFormat;
 exports.getImageMetadata = getImageMetadata;
 const sharp_1 = __importDefault(require("sharp"));
 const heicDecoder_1 = require("../lib/heicDecoder");
-async function processImage(buffer, options, sourceFormat) {
+async function processImage(buffer, options, sourceFormat, precomputedMeta) {
     // HEIC/HEIF pre-decode step — must run before Sharp pipeline (Sharp cannot read HEIC)
     if (sourceFormat === "heic") {
         buffer = await (0, heicDecoder_1.decodeHeicToBuffer)(buffer);
     }
     // REQ-101: Guard against decompression bombs
-    const meta = await (0, sharp_1.default)(buffer).metadata();
-    if ((meta.width ?? 0) * (meta.height ?? 0) > 25000000) {
+    // Use pre-computed metadata when available to avoid a redundant Sharp read
+    const meta = precomputedMeta ?? await (0, sharp_1.default)(buffer).metadata();
+    if ((meta.width ?? 0) * (meta.height ?? 0) > 25_000_000) {
         throw new Error("IMAGE_TOO_LARGE");
     }
-    let image = (0, sharp_1.default)(buffer, { limitInputPixels: 25000000 });
+    let image = (0, sharp_1.default)(buffer, { limitInputPixels: 25_000_000 });
     // REQ-103: Preserve ICC profile; strip other metadata only when requested
     if (options.removeMetadata) {
         image = image.keepIccProfile();
@@ -31,15 +32,23 @@ async function processImage(buffer, options, sourceFormat) {
         image = image.rotate();
     }
     else if (options.rotate !== undefined && options.rotate !== 0) {
+        // Validate rotate range
+        if (options.rotate < -360 || options.rotate > 360) {
+            throw new Error("Rotate must be between -360 and 360 degrees");
+        }
         const bg = options.background ?? "#000000";
         image = image.rotate(options.rotate, { background: bg });
     }
-    // Flip (horizontal mirror) and flop (vertical mirror)
+    // Intentional naming inversion between CLI/API and Sharp:
+    //   CLI/API "flip" = horizontal mirror = Sharp's .flop()
+    //   CLI/API "flop" = vertical mirror   = Sharp's .flip()
+    // Sharp names these from the axis of symmetry (flip = vertical axis = horizontal mirror).
+    // Our CLI names them from the axis of motion, which matches user intuition.
     if (options.flip) {
-        image = image.flop();
+        image = image.flop(); // horizontal mirror
     }
     if (options.flop) {
-        image = image.flip();
+        image = image.flip(); // vertical mirror
     }
     // Crop before resize
     if (options.crop) {
@@ -69,9 +78,10 @@ async function processImage(buffer, options, sourceFormat) {
     if (options.normalize) {
         image = image.normalize();
     }
-    // Blur (Gaussian)
+    // Blur (Gaussian) — clamp sigma to [0.3, 100]
     if (options.blur !== undefined && options.blur > 0) {
-        image = image.blur(options.blur);
+        const clampedBlur = Math.max(0.3, Math.min(100, options.blur));
+        image = image.blur(clampedBlur);
     }
     // Sharpen (unsharp mask)
     if (options.sharpen) {
@@ -82,7 +92,8 @@ async function processImage(buffer, options, sourceFormat) {
         image = image.trim();
     }
     // Background fill (for transparency → opaque format conversion)
-    if (options.background && options.targetFormat === "jpeg") {
+    // Both JPEG and TIFF do not support alpha — flatten with background color
+    if (options.background && (options.targetFormat === "jpeg" || options.targetFormat === "tiff")) {
         image = image.flatten({ background: options.background });
     }
     // Convert to target format
