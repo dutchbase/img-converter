@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { FORMAT_LABELS, detectFormatFromMime } from "@/types/client";
 
 interface DropZoneProps {
@@ -44,6 +44,26 @@ export default function DropZone({ onFilesSelect, disabled = false }: DropZonePr
     [handleFiles, disabled]
   );
 
+  // Clipboard paste support — listen for paste events on the document
+  useEffect(() => {
+    const onPaste = (e: ClipboardEvent) => {
+      if (disabled) return;
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      const files: File[] = [];
+      for (const item of items) {
+        if (item.kind === "file") {
+          const file = item.getAsFile();
+          if (file) files.push(file);
+        }
+      }
+      if (files.length > 0) handleFiles(files);
+    };
+
+    document.addEventListener("paste", onPaste);
+    return () => document.removeEventListener("paste", onPaste);
+  }, [disabled, handleFiles]);
+
   const supportedFormats = Object.values(FORMAT_LABELS).join(", ");
 
   return (
@@ -67,6 +87,7 @@ export default function DropZone({ onFilesSelect, disabled = false }: DropZonePr
         className="absolute inset-0 opacity-0 cursor-pointer"
         onChange={onInputChange}
         disabled={disabled}
+        aria-label="Select image files to convert"
       />
       <div className="pointer-events-none flex flex-col items-center gap-3 p-8 text-center">
         <svg
