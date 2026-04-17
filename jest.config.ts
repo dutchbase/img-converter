@@ -16,6 +16,17 @@ const config: Config = {
   transform: {
     "^.+\\.tsx?$": ["ts-jest", { tsconfig: { esModuleInterop: true } }],
   },
+  // Enforce minimum coverage — prevents regressions as the codebase grows.
+  // Thresholds are intentionally conservative: the CLI (index.ts) and web UI
+  // components are partially covered by integration/E2E tests outside Jest.
+  coverageThreshold: {
+    global: {
+      branches: 60,
+      functions: 70,
+      lines: 70,
+      statements: 70,
+    },
+  },
 };
 
 export default config;
