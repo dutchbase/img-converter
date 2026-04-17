@@ -1,6 +1,6 @@
 {
   "name": "@dutchbase/img-convert",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "CLI image converter with WebUI. Convert JPG, PNG, WebP, AVIF and more. Built for developers and AI agents.",
   "keywords": [
     "image",
