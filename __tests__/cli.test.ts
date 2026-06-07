@@ -2,6 +2,9 @@
 // Wave 1 — real assertions for CLI pure helpers.
 // RED: This file will fail until cli/helpers.ts is created.
 
+import { spawnSync } from "child_process";
+import path from "path";
+import packageJson from "@/package.json";
 import {
   detectFormatFromExt,
   buildOutputPath,
@@ -9,6 +12,28 @@ import {
   formatKB,
   isPipeMode,
 } from "@/cli/helpers";
+
+describe("img-convert CLI metadata", () => {
+  beforeAll(() => {
+    const result = spawnSync("npm", ["run", "build:cli"], {
+      encoding: "utf8",
+    });
+
+    if (result.status !== 0) {
+      throw new Error(result.stderr || result.stdout);
+    }
+  });
+
+  it("prints the package version", () => {
+    const result = spawnSync(process.execPath, [path.resolve("bin/img-convert"), "--version"], {
+      encoding: "utf8",
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.stdout.trim()).toBe(packageJson.version);
+    expect(result.stderr).toBe("");
+  });
+});
 
 describe("detectFormatFromExt", () => {
   it("returns 'jpeg' for .jpg", () => {
