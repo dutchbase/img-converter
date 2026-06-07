@@ -18,6 +18,22 @@ import {
 } from "@/cli/helpers";
 import type { ImageFormat } from "@/types/index";
 
+declare const require: NodeRequire;
+
+function readPackageVersion(): string {
+  for (const packageJsonPath of ["../../../package.json", "../../package.json", "../package.json"]) {
+    try {
+      return (require(packageJsonPath) as { version: string }).version;
+    } catch {
+      // Try the next path; compiled CLI and source CLI live at different depths.
+    }
+  }
+
+  return "0.0.0";
+}
+
+const PKG_VERSION = readPackageVersion();
+
 // ---------------------------------------------------------------------------
 // readStdin — collect stdin into a single Buffer (capped at 100 MB)
 // ---------------------------------------------------------------------------
@@ -63,6 +79,7 @@ const program = new Command();
 program
   .name("img-convert")
   .description("Convert images between formats using Sharp")
+  .version(PKG_VERSION)
   .enablePositionalOptions();
 
 // ---------------------------------------------------------------------------

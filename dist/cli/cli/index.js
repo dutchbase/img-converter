@@ -47,6 +47,18 @@ const heicDecoder_1 = require("../lib/heicDecoder");
 const safeFetch_1 = require("../lib/safeFetch");
 const index_1 = require("../types/index");
 const helpers_1 = require("../cli/helpers");
+function readPackageVersion() {
+    for (const packageJsonPath of ["../../../package.json", "../../package.json", "../package.json"]) {
+        try {
+            return require(packageJsonPath).version;
+        }
+        catch {
+            // Try the next path; compiled CLI and source CLI live at different depths.
+        }
+    }
+    return "0.0.0";
+}
+const PKG_VERSION = readPackageVersion();
 // ---------------------------------------------------------------------------
 // readStdin — collect stdin into a single Buffer (capped at 100 MB)
 // ---------------------------------------------------------------------------
@@ -87,6 +99,7 @@ const program = new commander_1.Command();
 program
     .name("img-convert")
     .description("Convert images between formats using Sharp")
+    .version(PKG_VERSION)
     .enablePositionalOptions();
 // ---------------------------------------------------------------------------
 // `info` subcommand
