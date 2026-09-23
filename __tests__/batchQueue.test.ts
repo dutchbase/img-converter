@@ -1,7 +1,7 @@
 // __tests__/batchQueue.test.ts
 // Stubs for batch orchestration tests. Implementation covered in plans 02-04/02-05.
 
-import { shouldShowRetry } from "@/components/BatchQueue";
+import { shouldShowRetry, uniqueNames } from "@/components/BatchQueue";
 import { BatchItem } from "@/types/index";
 import { detectFormatFromMime } from "@/types/client";
 
@@ -122,5 +122,11 @@ describe("Retry button suppression for Live Photos (REQ-303)", () => {
       originalSize: 1000,
     };
     expect(shouldShowRetry(item)).toBe(false);
+  });
+});
+
+describe("ZIP entry names", () => {
+  it("dedupes colliding filenames", () => {
+    expect(uniqueNames(["a.webp", "a.webp", "b.webp", "a.webp"])).toEqual(["a.webp", "a-1.webp", "b.webp", "a-2.webp"]);
   });
 });

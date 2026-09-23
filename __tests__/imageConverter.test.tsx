@@ -3,7 +3,7 @@ import React from "react";
 import "@testing-library/jest-dom";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import ImageConverter from "@/components/ImageConverter";
+import ImageConverter, { convertSingleItem } from "@/components/ImageConverter";
 
 // jsdom doesn't implement URL.createObjectURL
 Object.defineProperty(URL, "createObjectURL", { value: jest.fn(() => "blob:mock-url"), writable: true });
@@ -93,5 +93,21 @@ describe("ImageConverter React state machine", () => {
       const doneItems = screen.getAllByText("Done");
       expect(doneItems.length).toBe(8);
     }, { timeout: 10000 });
+  });
+});
+
+describe("convertSingleItem — rate limiting", () => {
+  it("waits out a 429 using Retry-After and retries", async () => {
+    const tooMany = { ok: false, status: 429, headers: new Headers({ "Retry-After": "0" }), json: async () => ({}) };
+    global.fetch = jest.fn()
+      .mockResolvedValueOnce(tooMany)
+      .mockResolvedValueOnce(createSuccessResponse());
+    const file = new File(["x"], "photo.png", { type: "image/png" });
+    const result = await convertSingleItem(
+      { id: "1", file, status: "pending", originalSize: 1 },
+      { targetFormat: "webp", quality: 85, resizeWidth: null, resizeHeight: null, maintainAspectRatio: true, removeMetadata: false }
+    );
+    expect(result.filename).toBe("photo.webp");
+    expect(global.fetch).toHaveBeenCalledTimes(2);
   });
 });

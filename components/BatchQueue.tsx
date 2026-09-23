@@ -15,6 +15,18 @@ export function shouldShowRetry(item: BatchItem): boolean {
   return item.errorCode !== "LIVE_PHOTO_NOT_SUPPORTED";
 }
 
+/** Suffix duplicate filenames (a.webp, a-1.webp, …) so ZIP entries don't collide. */
+export function uniqueNames(names: string[]): string[] {
+  const used = new Set<string>();
+  return names.map((name) => {
+    const dot = name.lastIndexOf(".");
+    let candidate = name;
+    for (let n = 1; used.has(candidate); n++) candidate = `${name.slice(0, dot)}-${n}${name.slice(dot)}`;
+    used.add(candidate);
+    return candidate;
+  });
+}
+
 interface BatchQueueProps {
   items: BatchItem[];
   onRemoveItem: (id: string) => void;
@@ -47,10 +59,8 @@ async function handleDownloadZip(items: BatchItem[]) {
 
   if (successItems.length === 0) return;
 
-  const files = successItems.map((item) => ({
-    name: item.result!.filename,
-    input: item.result!.blob,
-  }));
+  const names = uniqueNames(successItems.map((item) => item.result!.filename));
+  const files = successItems.map((item, i) => ({ name: names[i], input: item.result!.blob }));
 
   const response = downloadZip(files);
   const blob = await response.blob();

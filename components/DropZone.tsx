@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState, useEffect } from "react";
-import { FORMAT_LABELS, detectFormatFromMime } from "@/types/client";
+import { detectFormatFromMime } from "@/types/client";
 
 interface DropZoneProps {
   onFilesSelect: (files: File[]) => void;
@@ -64,7 +64,8 @@ export default function DropZone({ onFilesSelect, disabled = false }: DropZonePr
     return () => document.removeEventListener("paste", onPaste);
   }, [disabled, handleFiles]);
 
-  const supportedFormats = Object.values(FORMAT_LABELS).join(", ");
+  // Matches the input accept list below; SVG/BMP are CLI-only or unsupported
+  const supportedFormats = "JPG, PNG, WebP, AVIF, GIF, TIFF, HEIC";
 
   return (
     <div

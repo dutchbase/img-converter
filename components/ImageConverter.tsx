@@ -32,7 +32,7 @@ class ConversionError extends Error {
   }
 }
 
-async function convertSingleItem(
+export async function convertSingleItem(
   item: BatchItem,
   options: ConvertOptions,
   signal?: AbortSignal
@@ -56,7 +56,20 @@ async function convertSingleItem(
   if (options.normalize) formData.append("normalize", "true");
   if (options.trim) formData.append("trim", "true");
 
-  const res = await fetch("/api/convert", { method: "POST", body: formData, signal });
+  // The server rate-limits per IP; large batches wait out 429s instead of failing
+  let res: Response;
+  for (let attempt = 0; ; attempt++) {
+    res = await fetch("/api/convert", { method: "POST", body: formData, signal });
+    if (res.status !== 429 || attempt >= 10) break;
+    const waitMs = (Number(res.headers.get("Retry-After") ?? "5") || 0) * 1000;
+    await new Promise<void>((resolve, reject) => {
+      const t = setTimeout(resolve, waitMs);
+      signal?.addEventListener("abort", () => {
+        clearTimeout(t);
+        reject(new DOMException("Aborted", "AbortError"));
+      }, { once: true });
+    });
+  }
 
   if (!res.ok) {
     const data = await res.json().catch(() => ({ message: "Conversion failed" }));
