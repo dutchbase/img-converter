@@ -13,7 +13,7 @@ Sharp-based image converter. This guide covers **v2** of the CLI (`img-convert -
 2. **Parse stdout even when the exit code is 1.** Exit 1 means some items failed; the JSON array still lists every item. Check each item's `ok`.
 3. **Exit 2 means the command itself was wrong** (bad flag, unknown format, no matching files, bad manifest). With `--json`, stdout is `{"error":{"code","message"}}`. Fix the command; don't retry it unchanged.
 4. **Read the `output` path from the JSON.** Don't predict it: filenames are sanitized (`my photo.jpg` → `my_photo.webp`).
-5. **Quote glob patterns** (`"imgs/*.png"`) so the CLI expands them, not the shell. Prefer absolute paths.
+5. **Quote glob patterns** (`"imgs/*.png"`, `"imgs/**/*.png"` where `**` recurses into subfolders, `"*.{jpg,png}"`) so the CLI expands them, not the shell. Prefer absolute paths.
 6. **Run `img-convert info` first** on images you know nothing about (alpha, animation, size).
 7. **For different settings per file, use a `batch` manifest** (`img-convert batch - --json` reads it from stdin) instead of a shell loop.
 8. **No in-place edits:** writing to the input's own path is refused (`OUTPUT_IS_INPUT`). Write to another directory with `-o`, then move the file if needed.
@@ -37,8 +37,9 @@ img-convert /abs/banner.png -f jpeg --width 1280 --height 720 --json
 # Stay under an upload limit (highest quality that fits; jpeg/webp/avif only)
 img-convert /abs/photo.png -f jpeg --max-size 200KB --json
 
-# Strip EXIF/GPS but keep the format: write elsewhere, then move
-img-convert /abs/photo.jpg -f jpeg --no-metadata -o /abs/clean --json && mv /abs/clean/photo.jpg /abs/photo.jpg
+# Strip EXIF/GPS but keep the format: write elsewhere, then move.
+# This re-encodes the image, so use a high -q to avoid visible quality loss.
+img-convert /abs/photo.jpg -f jpeg -q 95 --no-metadata -o /abs/clean --json && mv /abs/clean/photo.jpg /abs/photo.jpg
 
 # iPhone HEIC → JPEG (HEIC must be a local .heic/.heif file or stdin)
 img-convert /abs/IMG_0001.HEIC -f jpeg --json
@@ -60,6 +61,14 @@ cat in.png | img-convert -f webp > out.webp
 
 # Inspect a folder
 img-convert info "/abs/imgs/*"
+
+# Whole tree, recursively (quote the glob)
+img-convert "/abs/imgs/**/*.png" -f webp -o /abs/out --json
+
+# Same filenames in different folders (a/x.png, b/x.png) would collide in one -o dir
+# (DUPLICATE_OUTPUT). Keep them apart by giving each item its own outputDir:
+find /abs/imgs -name '*.png' | jq -R '{input: ., format: "webp", outputDir: ("/abs/out" + (. | ltrimstr("/abs/imgs") | sub("/[^/]*$"; "")))}' \
+  | jq -s . | img-convert batch - --json
 
 # Preview a big job without writing anything
 img-convert "/abs/imgs/**/*.png" -f avif -o /abs/out --dry-run --json
@@ -117,7 +126,7 @@ Convert, batch and dry-run all print **an array in input order**. `input` is the
 ```
 
 - `quality` is the quality actually used (lower than `-q` when `--max-size` had to shrink it).
-- `reduction` is the percent smaller; it's negative if the output is bigger.
+- `reduction` is the percent smaller; it's negative if the output is bigger. That's common for small or flat graphics converted to JPEG, and for re-encoding already-compressed files. Check it and keep the original if it grew.
 - Dry-run items: `{ "index", "ok": true, "dryRun": true, "input", "output", "format", "inputBytes" }`.
 
 `info` prints an array of:
