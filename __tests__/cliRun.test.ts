@@ -25,6 +25,14 @@ it("resolves literal paths containing glob characters", async () => {
   expect((await resolveInputs([path.join(dir, "my photo [1].png")])).files).toEqual([path.join(dir, "my photo [1].png")]);
 });
 
+it("keeps missing plain paths as inputs so they fail per item, but drops unmatched globs", async () => {
+  const missing = path.join(dir, "nope.png");
+  expect((await resolveInputs([missing, path.join(dir, "zz*.png"), path.join(dir, "a/x.png")]))).toEqual({
+    files: [missing, path.join(dir, "a/x.png")],
+    unmatched: [path.join(dir, "zz*.png")],
+  });
+});
+
 it("returns results in input order with absolute input paths", async () => {
   const out = path.join(dir, "out1");
   const r = await runConvert(

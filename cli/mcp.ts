@@ -18,18 +18,19 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import fs from "fs/promises";
+import { readFileSync } from "fs";
 import path from "path";
 import { processImage, getImageMetadata } from "@/lib/imageProcessor";
 import { decodeHeicToBuffer } from "@/lib/heicDecoder";
 import { safeFetch } from "@/lib/safeFetch";
 import { OUTPUT_FORMATS, FORMAT_LABELS } from "@/types/index";
-import { detectFormatFromExt, buildOutputPath } from "@/cli/helpers";
+import { detectFormatFromExt, buildOutputPath, packageRoot } from "@/cli/helpers";
 import type { ImageFormat } from "@/types/index";
 
-// Read version from package.json at runtime so it never drifts from the published version.
-// Using require() directly — this file compiles to CommonJS (tsconfig.cli.json module: CommonJS).
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { version: PKG_VERSION } = require("../package.json") as { version: string };
+// Read version from package.json at runtime so it never drifts from the published version
+const { version: PKG_VERSION } = JSON.parse(
+  readFileSync(path.join(packageRoot(), "package.json"), "utf8")
+) as { version: string };
 
 const MAX_BATCH_ITEMS = 100;
 

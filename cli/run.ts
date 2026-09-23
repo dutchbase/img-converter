@@ -88,7 +88,11 @@ export async function resolveInputs(patterns: string[]): Promise<{ files: string
         continue;
       }
     } catch {
-      // not a literal file — try it as a glob
+      // not an existing file — try it as a glob
+    }
+    if (!/[*?[\]{}]/.test(p)) {
+      files.push(path.resolve(p)); // plain path that doesn't exist: report NOT_FOUND per item
+      continue;
     }
     const matches = await glob(p, { absolute: true, nodir: true });
     if (matches.length === 0) unmatched.push(p);

@@ -4,12 +4,24 @@
  * No Commander, Sharp, or glob imports — all functions receive plain values.
  */
 
+import fs from "fs";
+import path from "path";
 import { ImageFormat, ConvertOptions, CropOptions } from "@/types/index";
 
 // Re-export from the shared lib layer so cli/ never defines its own copy.
 // lib/api.ts and cli/ both import from lib/formatUtils to keep the dependency
 // direction strictly: cli/ → lib/ → types/
 export { detectFormatFromExt, EXT_TO_FORMAT, buildOutputPath } from "@/lib/formatUtils";
+
+/**
+ * Package root (holds package.json and SKILL.md). Found by walking up, because this file
+ * runs from cli/ in tests and from dist/cli/cli/ when installed.
+ */
+export function packageRoot(): string {
+  let dir = __dirname;
+  while (!fs.existsSync(path.join(dir, "package.json")) && path.dirname(dir) !== dir) dir = path.dirname(dir);
+  return dir;
+}
 
 /** Stable, machine-readable error codes emitted in --json output. */
 export type ErrorCode =
@@ -63,6 +75,9 @@ interface CommanderOpts {
   sharpen?: boolean;
   normalize?: boolean;
   trim?: boolean;
+  fit?: "inside" | "cover" | "contain" | "fill";
+  allowUpscaling?: boolean;
+  crop?: CropOptions;
 }
 
 /**
@@ -90,6 +105,9 @@ export function buildConvertOptions(opts: CommanderOpts): ConvertOptions {
     sharpen: opts.sharpen,
     normalize: opts.normalize,
     trim: opts.trim,
+    fit: opts.fit,
+    allowUpscaling: opts.allowUpscaling,
+    crop: opts.crop,
   };
 }
 

@@ -5,6 +5,30 @@ Format: conventional commits.
 
 ---
 
+## 2.0.0 — agent-friendly CLI
+
+### Breaking changes
+- `--json` always prints an array in input order (also for a single file and `--dry-run`). Every item has `index` and `ok`.
+- `input` is now the absolute file path (or the URL as given) instead of the basename.
+- Failed items carry `error: { code, message }` with a stable code (`NOT_FOUND`, `DUPLICATE_OUTPUT`, `IMAGE_TOO_LARGE`, …) instead of a plain string.
+- Exit code 2 for usage errors (bad flags, unknown format, no matching files, invalid manifest). With `--json` these print `{"error":{"code","message"}}` on stdout.
+- `info` accepts several paths/globs/URLs and always prints an array. HEIC files report `format: "heic"`; items include `pages`.
+- Batch manifests reject unknown keys.
+- Requires Node.js >= 20.9.
+
+### Features
+- `--fit inside|cover|contain|fill`, `--crop l,t,w,h`, `--allow-upscaling`, `--max-size <200KB>` (highest quality under a byte budget), `-v/--version`.
+- Batch manifest items accept every per-file option (fit, crop, background, rotate, maxSize, …); `batch -` reads the manifest from stdin; `batch --dry-run`.
+- `img-convert skill` prints the bundled agent guide; `SKILL.md` ships in the npm package.
+- `--help` shows examples and exit codes.
+
+### Bug fixes
+- Two inputs that map to the same output no longer silently overwrite each other (`DUPLICATE_OUTPUT`).
+- Existing files whose names contain glob characters (e.g. `photo [1].png`) are converted instead of "no files matched".
+- `img-convert mcp` no longer crashes on startup in the installed package (package.json lookup).
+
+---
+
 ## [Unreleased] — feat/bugfix-security-arch-ui-20260417
 
 ### Bug Fixes

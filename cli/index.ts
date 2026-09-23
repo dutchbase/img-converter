@@ -1,22 +1,24 @@
 #!/usr/bin/env node
 
-import { Command } from "commander";
+import { Command, Option } from "commander";
 import path from "path";
-import fs from "fs/promises";
-import { glob } from "glob";
-import pLimit from "p-limit";
-import { processImage, getImageMetadata } from "@/lib/imageProcessor";
-import { decodeHeicToBuffer } from "@/lib/heicDecoder";
-import { safeFetch } from "@/lib/safeFetch";
-import { OUTPUT_FORMATS, ManifestItem } from "@/types/index";
+import fs from "fs";
+import { processImage, processToMaxBytes } from "@/lib/imageProcessor";
+import { OUTPUT_FORMATS, QUALITY_FORMATS } from "@/types/index";
 import {
-  detectFormatFromExt,
-  buildOutputPath,
   buildConvertOptions,
   formatKB,
   isPipeMode,
+  parseCrop,
+  parseSize,
+  packageRoot,
+  CliError,
+  type ErrorCode,
 } from "@/cli/helpers";
-import type { ImageFormat } from "@/types/index";
+import { resolveInputs, runConvert, runInfo, manifestToJobs, type CliResult, type Job } from "@/cli/run";
+import type { CropOptions, ImageFormat } from "@/types/index";
+
+const { version } = JSON.parse(fs.readFileSync(path.join(packageRoot(), "package.json"), "utf8")) as { version: string };
 
 // ---------------------------------------------------------------------------
 // readStdin — collect stdin into a single Buffer (capped at 100 MB)
@@ -42,27 +44,94 @@ function readStdin(): Promise<Buffer> {
 }
 
 // ---------------------------------------------------------------------------
-// fetchUrl — download an image from a URL with SSRF protection
+// Usage errors: exit 2, as JSON on stdout when --json is present
 // ---------------------------------------------------------------------------
-async function fetchUrl(url: string): Promise<Buffer> {
-  return safeFetch(url);
+const jsonMode = process.argv.includes("--json");
+
+function fail(code: ErrorCode, message: string): never {
+  if (jsonMode) {
+    process.stdout.write(JSON.stringify({ error: { code, message } }) + "\n");
+  } else {
+    process.stderr.write(`Error: ${message}\n`);
+  }
+  process.exit(2);
 }
 
-// ---------------------------------------------------------------------------
-// isUrl — detect if a string is an HTTP/HTTPS URL
-// ---------------------------------------------------------------------------
-function isUrl(s: string): boolean {
-  return s.startsWith("http://") || s.startsWith("https://");
-}
+/** Wrap a parser so CliErrors become usage errors (exit 2). */
+const guard = <T>(parse: (v: string) => T) => (v: string): T => {
+  try {
+    return parse(v);
+  } catch (err) {
+    fail((err as CliError).code ?? "INVALID_ARGS", (err as Error).message);
+  }
+};
 
-const positiveInt = (name: string) => (v: string): number => {
-  const n = parseInt(v, 10);
-  if (isNaN(n) || n < 1) {
-    console.error(`Error: ${name} must be a positive integer`);
-    process.exit(1);
+const positiveInt = (name: string) => guard((v: string): number => {
+  const n = Number(v);
+  if (!Number.isInteger(n) || n < 1) throw new CliError("INVALID_ARGS", `${name} must be a positive integer, got "${v}"`);
+  return n;
+});
+
+const quality = guard((v: string): number => {
+  const n = Number(v);
+  if (!Number.isInteger(n) || n < 1 || n > 100) {
+    throw new CliError("INVALID_ARGS", `quality must be an integer 1-100, got "${v}"`);
   }
   return n;
-};
+});
+
+const number = (name: string) => guard((v: string): number => {
+  const n = Number(v);
+  if (!Number.isFinite(n)) throw new CliError("INVALID_ARGS", `${name} must be a number, got "${v}"`);
+  return n;
+});
+
+function validateFormat(format: string | undefined): ImageFormat {
+  if (!format) fail("INVALID_ARGS", `Missing -f, --format <fmt>. Valid formats: ${OUTPUT_FORMATS.join(", ")}`);
+  if (!(OUTPUT_FORMATS as string[]).includes(format)) {
+    fail("INVALID_ARGS", `Unknown format "${format}". Valid formats: ${OUTPUT_FORMATS.join(", ")}`);
+  }
+  return format as ImageFormat;
+}
+
+async function resolveOrFail(patterns: string[]): Promise<string[]> {
+  try {
+    const { files, unmatched } = await resolveInputs(patterns);
+    for (const p of unmatched) process.stderr.write(`Warning: no files matched '${p}'\n`);
+    return files;
+  } catch (err) {
+    fail((err as CliError).code ?? "NO_INPUT", (err as Error).message);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Result printing shared by convert and batch
+// ---------------------------------------------------------------------------
+function printProgress(r: CliResult, quiet: boolean): void {
+  if (jsonMode) return;
+  const name = /^https?:\/\//.test(r.input) ? r.input : path.basename(r.input);
+  if (!r.ok) {
+    process.stderr.write(`✗ ${name} — [${r.error.code}] ${r.error.message}\n`);
+  } else if (quiet) {
+    return;
+  } else if ("dryRun" in r) {
+    process.stderr.write(`[dry-run] ${name} → ${r.output} (${formatKB(r.inputBytes)})\n`);
+  } else {
+    process.stderr.write(
+      `✓ ${name} → ${path.basename(r.output)} (${formatKB(r.inputBytes)} → ${formatKB(r.outputBytes)})\n`
+    );
+  }
+}
+
+function finish(results: CliResult[], quiet: boolean): never {
+  const failed = results.filter((r) => !r.ok).length;
+  if (jsonMode) {
+    process.stdout.write(JSON.stringify(results, null, 2) + "\n");
+  } else if (!quiet || failed > 0) {
+    process.stderr.write(`Done: ${results.length - failed} converted, ${failed} failed\n`);
+  }
+  process.exit(failed > 0 ? 1 : 0);
+}
 
 // ---------------------------------------------------------------------------
 // Commander program definition
@@ -71,50 +140,23 @@ const program = new Command();
 
 program
   .name("img-convert")
-  .description("Convert images between formats using Sharp")
-  .enablePositionalOptions();
+  .description("Convert, resize, compress and inspect images (JPEG, PNG, WebP, AVIF, GIF, TIFF; HEIC/SVG input)")
+  .version(version, "-v, --version")
+  .enablePositionalOptions()
+  // Help/version exit 0; every other Commander parse error is a usage error (exit 2)
+  .exitOverride((err) => process.exit(err.exitCode === 0 ? 0 : 2));
 
 // ---------------------------------------------------------------------------
 // `info` subcommand
 // ---------------------------------------------------------------------------
 program
-  .command("info <file>")
-  .description("Get image metadata/info as JSON")
-  .action(async (file: string) => {
-    try {
-      let buffer: Buffer;
-      if (isUrl(file)) {
-        buffer = await fetchUrl(file);
-      } else {
-        buffer = await fs.readFile(file);
-      }
-
-      const filesize = buffer.length;
-      // HEIC pre-decode if needed
-      const ext = detectFormatFromExt(file);
-      if (ext === "heic") {
-        buffer = await decodeHeicToBuffer(buffer);
-      }
-
-      const meta = await getImageMetadata(buffer);
-      const info = {
-        format: meta.format ?? "unknown",
-        width: meta.width ?? 0,
-        height: meta.height ?? 0,
-        filesize,
-        hasAlpha: (meta.channels ?? 0) === 4 || meta.hasAlpha === true,
-        hasExif: meta.exif !== undefined && meta.exif.length > 0,
-        colorSpace: meta.space ?? "unknown",
-        isAnimated: (meta.pages ?? 1) > 1,
-        channels: meta.channels,
-        density: meta.density,
-      };
-      process.stdout.write(JSON.stringify(info, null, 2) + "\n");
-      process.exit(0);
-    } catch (err) {
-      process.stderr.write(`Error: ${(err as Error).message}\n`);
-      process.exit(1);
-    }
+  .command("info <files...>")
+  .description("Print image metadata as a JSON array (paths, quoted globs or URLs)")
+  .option("--json", "Accepted for consistency; info always prints JSON")
+  .action(async (patterns: string[]) => {
+    const results = await runInfo(await resolveOrFail(patterns));
+    process.stdout.write(JSON.stringify(results, null, 2) + "\n");
+    process.exit(results.some((r) => !r.ok) ? 1 : 0);
   });
 
 // ---------------------------------------------------------------------------
@@ -122,113 +164,35 @@ program
 // ---------------------------------------------------------------------------
 program
   .command("batch <manifest>")
-  .description("Batch convert images from a JSON manifest file")
+  .description("Convert images listed in a JSON manifest file (use - to read it from stdin)")
   .option("-c, --concurrency <n>", "Parallel conversion limit", positiveInt("concurrency"), 4)
-  .option("--json", "Output results as JSON array")
-  .action(async (manifestPath: string, opts: { concurrency: number; json: boolean }) => {
-    let manifest: ManifestItem[];
+  .option("--json", "Print results as a JSON array on stdout")
+  .option("--dry-run", "Show what would happen without writing files")
+  .option("--quiet", "Suppress per-file progress lines")
+  .action(async (manifestPath: string, opts: { concurrency: number; dryRun?: boolean; quiet?: boolean }) => {
+    let jobs: Job[];
     try {
-      const content = await fs.readFile(manifestPath, "utf8");
-      manifest = JSON.parse(content) as ManifestItem[];
+      const text = manifestPath === "-" ? (await readStdin()).toString("utf8") : fs.readFileSync(manifestPath, "utf8");
+      jobs = manifestToJobs(JSON.parse(text));
     } catch (err) {
-      process.stderr.write(`Error reading manifest: ${(err as Error).message}\n`);
-      process.exit(1);
+      fail("INVALID_ARGS", `Invalid manifest: ${(err as Error).message}`);
     }
+    const results = await runConvert(jobs, {
+      concurrency: opts.concurrency,
+      dryRun: opts.dryRun,
+      onResult: (r) => printProgress(r, !!opts.quiet),
+    });
+    finish(results, !!opts.quiet);
+  });
 
-    if (!Array.isArray(manifest) || manifest.length === 0) {
-      process.stderr.write("Error: manifest must be a non-empty JSON array\n");
-      process.exit(1);
-    }
-
-    // Validate each manifest item has required fields
-    for (let i = 0; i < manifest.length; i++) {
-      const item = manifest[i];
-      if (!item.input || typeof item.input !== "string") {
-        process.stderr.write(`Error: manifest item [${i}] missing required "input" field\n`);
-        process.exit(1);
-      }
-      if (!item.format || typeof item.format !== "string") {
-        process.stderr.write(`Error: manifest item [${i}] missing required "format" field\n`);
-        process.exit(1);
-      }
-      const validFormats: string[] = OUTPUT_FORMATS;
-      if (!validFormats.includes(item.format)) {
-        process.stderr.write(`Error: manifest item [${i}] has invalid format "${item.format}". Valid: ${OUTPUT_FORMATS.join(", ")}\n`);
-        process.exit(1);
-      }
-    }
-
-    const limit = pLimit(opts.concurrency);
-    const results: object[] = [];
-    let failCount = 0;
-
-    const tasks = manifest.map((item, idx) =>
-      limit(async () => {
-        try {
-          let inputBuffer: Buffer;
-          if (isUrl(item.input)) {
-            inputBuffer = await fetchUrl(item.input);
-          } else {
-            inputBuffer = await fs.readFile(item.input);
-          }
-
-          const sourceFormat = detectFormatFromExt(item.input) ?? undefined;
-          const convertOpts = buildConvertOptions({
-            format: item.format,
-            quality: item.quality ?? 85,
-            width: item.width,
-            height: item.height,
-            metadata: !(item.removeMetadata ?? false),
-            concurrency: opts.concurrency,
-            quiet: false,
-          });
-
-          const outputBuffer = await processImage(inputBuffer, convertOpts, sourceFormat);
-          const meta = await getImageMetadata(outputBuffer);
-
-          const outputPath = item.output ?? buildOutputPath(item.input, item.format);
-
-          await fs.writeFile(outputPath, outputBuffer);
-
-          const result = {
-            index: idx,
-            input: item.input,
-            output: outputPath,
-            inputBytes: inputBuffer.length,
-            outputBytes: outputBuffer.length,
-            reduction: inputBuffer.length > 0
-              ? parseFloat(((1 - outputBuffer.length / inputBuffer.length) * 100).toFixed(1))
-              : 0,
-            width: meta.width ?? 0,
-            height: meta.height ?? 0,
-            format: item.format,
-            quality: item.quality ?? 85,
-          };
-
-          if (!opts.json) {
-            process.stderr.write(`\u2713 ${item.input} \u2192 ${outputPath}\n`);
-          }
-          results.push(result);
-        } catch (err) {
-          failCount++;
-          if (!opts.json) {
-            process.stderr.write(`\u2717 ${item.input} \u2014 ${(err as Error).message}\n`);
-          } else {
-            results.push({ index: idx, input: item.input, error: (err as Error).message });
-          }
-        }
-      })
-    );
-
-    await Promise.all(tasks);
-
-    if (opts.json) {
-      process.stdout.write(JSON.stringify(results, null, 2) + "\n");
-    } else {
-      process.stderr.write(`Done: ${manifest.length - failCount} converted, ${failCount} failed\n`);
-    }
-
-    process.exit(failCount > 0 ? 1 : 0);
+// ---------------------------------------------------------------------------
+// `skill` subcommand — print the agent guide bundled with the package
+// ---------------------------------------------------------------------------
+program
+  .command("skill")
+  .description("Print the agent skill guide (SKILL.md) to stdout")
+  .action(() => {
+    process.stdout.write(fs.readFileSync(path.join(packageRoot(), "SKILL.md"), "utf8"));
   });
 
 // ---------------------------------------------------------------------------
@@ -247,43 +211,59 @@ program
 // Root convert command
 // ---------------------------------------------------------------------------
 program
-  .argument("[files...]", "Input file paths, URLs, or glob patterns")
+  .argument("[files...]", "Input file paths, quoted glob patterns or HTTP(S) URLs; omit to read stdin")
   .option("-f, --format <fmt>", `Target format (${OUTPUT_FORMATS.join("|")})`)
-  .option(
-    "-q, --quality <n>",
-    "Quality 1-100",
-    (v: string) => {
-      const n = parseInt(v, 10);
-      if (isNaN(n) || n < 1 || n > 100) {
-        console.error("Error: quality must be an integer between 1 and 100");
-        process.exit(1);
-      }
-      return n;
-    },
-    85
-  )
+  .option("-q, --quality <n>", "Quality 1-100 (lossy formats)", quality, 85)
   .option("--width <n>", "Resize width in pixels", positiveInt("width"))
   .option("--height <n>", "Resize height in pixels", positiveInt("height"))
-  .option("--no-metadata", "Strip EXIF metadata (ICC color profile preserved)")
-  .option("-o, --output <dir>", "Output directory (default: same directory as input)")
+  .addOption(
+    new Option(
+      "--fit <mode>",
+      "How --width + --height fit: inside (keep ratio), cover (crop to fill), contain (pad with --background), fill (stretch)"
+    )
+      .choices(["inside", "cover", "contain", "fill"])
+      .default("inside")
+  )
+  .option("--allow-upscaling", "Allow enlarging images smaller than --width/--height")
+  .option("--crop <l,t,w,h>", "Crop region in source pixels, applied before resizing (left,top,width,height)", guard(parseCrop))
+  .option("--max-size <size>", "Pick the highest quality that fits, e.g. 200KB or 1.5MB (jpeg/webp/avif only)", guard(parseSize))
+  .option("--no-metadata", "Strip EXIF/XMP/IPTC (ICC profile kept)")
+  .option("-o, --output <dir>", "Output directory, created if missing (default: next to each input)")
   .option("-c, --concurrency <n>", "Parallel conversion limit", positiveInt("concurrency"), 4)
-  .option("--quiet", "Suppress progress output (errors and summary still shown on failure)")
-  .option("--json", "Output results as JSON (progress to stderr, data to stdout)")
+  .option("--quiet", "Suppress per-file progress lines (failures and summary still shown)")
+  .option("--json", "Print results as a JSON array on stdout (progress goes to stderr)")
   .option("--dry-run", "Show what would happen without writing files")
   .option("--grayscale", "Convert to grayscale")
-  .option("--rotate <n>", "Rotate image by degrees", (v: string) => parseFloat(v))
-  .option("--flip", "Flip image horizontally (mirror)")
-  .option("--flop", "Flop image vertically")
-  .option("--background <color>", "Background fill color (e.g. #ffffff, rgba(0,0,0,0))")
-  .option("--blur <n>", "Gaussian blur sigma", (v: string) => parseFloat(v))
+  .option("--rotate <degrees>", "Rotate by degrees (-360 to 360); corners filled with --background", number("rotate"))
+  .option("--flip", "Mirror horizontally (left↔right)")
+  .option("--flop", "Mirror vertically (top↔bottom)")
+  .option("--background <color>", "Fill color for transparency, rotation and contain, e.g. #ffffff (JPEG default: white)")
+  .option("--blur <sigma>", "Gaussian blur sigma (0.3-100)", number("blur"))
   .option("--sharpen", "Apply unsharp mask sharpening")
-  .option("--normalize", "Apply automatic contrast enhancement")
-  .option("--trim", "Auto-trim whitespace/solid borders")
+  .option("--normalize", "Stretch contrast to the full range")
+  .option("--trim", "Trim uniform-color borders")
+  .addHelpText(
+    "after",
+    `
+Examples:
+  img-convert photo.jpg -f webp --json
+  img-convert "shots/*.png" -f jpeg --width 200 --height 200 --fit cover -o thumbs --json
+  img-convert big.png -f jpeg --max-size 200KB --json
+  img-convert info "shots/*.png"
+  img-convert batch - --json < jobs.json
+
+Exit codes: 0 ok, 1 some items failed (see the JSON array), 2 usage error (JSON {"error":...} with --json)
+AI agents: run \`img-convert skill\` for the full usage guide.`
+  )
   .action(async (files: string[], opts: {
     format?: string;
     quality: number;
     width?: number;
     height?: number;
+    fit: "inside" | "cover" | "contain" | "fill";
+    allowUpscaling?: boolean;
+    crop?: CropOptions;
+    maxSize?: number;
     metadata: boolean;
     output?: string;
     concurrency: number;
@@ -300,57 +280,26 @@ program
     normalize?: boolean;
     trim?: boolean;
   }) => {
-    // ------------------------------------------------------------------
-    // Format validation (required for root convert command)
-    // ------------------------------------------------------------------
-    if (!opts.format) {
-      process.stderr.write("Error: required option '-f, --format <fmt>' not specified\n");
-      program.help({ error: false });
-      process.exit(1);
+    const targetFormat = validateFormat(opts.format);
+    if (opts.maxSize !== undefined && !QUALITY_FORMATS.includes(targetFormat)) {
+      fail("INVALID_ARGS", `--max-size requires a lossy format (${QUALITY_FORMATS.join(", ")}), got "${targetFormat}"`);
     }
-
-    const validFormats: string[] = OUTPUT_FORMATS;
-    if (!validFormats.includes(opts.format)) {
-      process.stderr.write(
-        `Error: unknown format '${opts.format}'. Valid formats: ${OUTPUT_FORMATS.join(", ")}\n`
-      );
-      process.exit(1);
-    }
-    const targetFormat = opts.format as ImageFormat;
+    const convertOptions = buildConvertOptions({ ...opts, format: targetFormat });
 
     // ------------------------------------------------------------------
-    // Output directory creation
-    // ------------------------------------------------------------------
-    if (opts.output && !opts.dryRun) {
-      await fs.mkdir(opts.output, { recursive: true });
-    }
-
-    // ------------------------------------------------------------------
-    // Pipe mode
+    // Pipe mode: stdin → stdout
     // ------------------------------------------------------------------
     if (isPipeMode(process.stdin.isTTY, files)) {
       try {
         const inputBuffer = await readStdin();
-        // Detect source format via magic bytes so HEIC via stdin is handled correctly.
-        // detectFormatFromExt cannot be used here (no filename), so we rely on file-type.
+        // Magic bytes identify HEIC (there is no filename to go on)
         const { fileTypeFromBuffer } = await import("file-type");
         const detected = await fileTypeFromBuffer(inputBuffer);
-        const detectedFormat = detected ? (detected.mime === "image/heic" || detected.mime === "image/heif" ? "heic" as const : undefined) : undefined;
-
-        const convertOptions = buildConvertOptions({
-          ...opts,
-          format: targetFormat,
-          grayscale: opts.grayscale,
-          rotate: opts.rotate,
-          flip: opts.flip,
-          flop: opts.flop,
-          background: opts.background,
-          blur: opts.blur,
-          sharpen: opts.sharpen,
-          normalize: opts.normalize,
-          trim: opts.trim,
-        });
-        const outputBuffer = await processImage(inputBuffer, convertOptions, detectedFormat);
+        const sourceFormat =
+          detected?.mime === "image/heic" || detected?.mime === "image/heif" ? ("heic" as const) : undefined;
+        const outputBuffer = opts.maxSize
+          ? (await processToMaxBytes(inputBuffer, convertOptions, opts.maxSize, sourceFormat)).buffer
+          : await processImage(inputBuffer, convertOptions, sourceFormat);
         process.stdout.write(outputBuffer);
         process.exit(0);
       } catch (err) {
@@ -359,128 +308,21 @@ program
       }
     }
 
-    // ------------------------------------------------------------------
-    // Expand file paths and URLs
-    // ------------------------------------------------------------------
-    const resolvedFiles: string[] = [];
-    for (const pattern of files) {
-      if (isUrl(pattern)) {
-        resolvedFiles.push(pattern);
-      } else {
-        const matches = await glob(pattern, { absolute: true });
-        if (matches.length === 0) {
-          process.stderr.write(`Warning: no files matched '${pattern}'\n`);
-        }
-        resolvedFiles.push(...matches);
-      }
-    }
-    if (resolvedFiles.length === 0) {
-      process.stderr.write("Error: no input files found\n");
-      process.exit(1);
-    }
-
-    // ------------------------------------------------------------------
-    // Batch processing with p-limit
-    // ------------------------------------------------------------------
-    const limit = pLimit(opts.concurrency);
-    let failCount = 0;
-    const convertOptions = buildConvertOptions({
-      ...opts,
-      format: targetFormat,
-      grayscale: opts.grayscale,
-      rotate: opts.rotate,
-      flip: opts.flip,
-      flop: opts.flop,
-      background: opts.background,
-      blur: opts.blur,
-      sharpen: opts.sharpen,
-      normalize: opts.normalize,
-      trim: opts.trim,
+    const inputs = await resolveOrFail(files);
+    const jobs: Job[] = inputs.map((input) => ({
+      input,
+      options: convertOptions,
+      outputDir: opts.output,
+      maxBytes: opts.maxSize,
+    }));
+    const results = await runConvert(jobs, {
+      concurrency: opts.concurrency,
+      dryRun: opts.dryRun,
+      onResult: (r) => printProgress(r, opts.quiet),
     });
-
-    const jsonResults: object[] = [];
-
-    const tasks = resolvedFiles.map((filePath) =>
-      limit(async () => {
-        const inputName = isUrl(filePath) ? filePath : path.basename(filePath);
-        try {
-          let inputBuffer: Buffer;
-          if (isUrl(filePath)) {
-            inputBuffer = await fetchUrl(filePath);
-          } else {
-            inputBuffer = await fs.readFile(filePath);
-          }
-
-          const sourceFormat = isUrl(filePath) ? undefined : (detectFormatFromExt(filePath) ?? undefined);
-          const outputPath = buildOutputPath(filePath, targetFormat, opts.output);
-
-          if (opts.dryRun) {
-            const msg = `[dry-run] ${inputName} \u2192 ${path.basename(outputPath)} (${formatKB(inputBuffer.length)})\n`;
-            if (opts.json) {
-              jsonResults.push({ input: inputName, output: outputPath, inputBytes: inputBuffer.length, dryRun: true });
-            } else {
-              process.stderr.write(msg);
-            }
-            return;
-          }
-
-          const outputBuffer = await processImage(inputBuffer, convertOptions, sourceFormat);
-          await fs.writeFile(outputPath, outputBuffer);
-
-          const meta = await getImageMetadata(outputBuffer);
-          const reduction = inputBuffer.length > 0
-            ? parseFloat(((1 - outputBuffer.length / inputBuffer.length) * 100).toFixed(1))
-            : 0;
-
-          if (opts.json) {
-            jsonResults.push({
-              input: inputName,
-              output: outputPath,
-              inputBytes: inputBuffer.length,
-              outputBytes: outputBuffer.length,
-              reduction,
-              width: meta.width ?? 0,
-              height: meta.height ?? 0,
-              format: targetFormat,
-              quality: opts.quality,
-            });
-          } else if (!opts.quiet) {
-            process.stderr.write(
-              `\u2713 ${inputName} \u2192 ${path.basename(outputPath)} (${formatKB(inputBuffer.length)} \u2192 ${formatKB(outputBuffer.length)})\n`
-            );
-          }
-        } catch (err) {
-          failCount++;
-          if (opts.json) {
-            jsonResults.push({ input: inputName, error: (err as Error).message });
-          } else {
-            process.stderr.write(`\u2717 ${inputName} \u2014 ${(err as Error).message}\n`);
-          }
-        }
-      })
-    );
-
-    await Promise.all(tasks);
-
-    // ------------------------------------------------------------------
-    // Output and exit
-    // ------------------------------------------------------------------
-    if (opts.json) {
-      if (resolvedFiles.length === 1 && jsonResults.length === 1) {
-        process.stdout.write(JSON.stringify(jsonResults[0], null, 2) + "\n");
-      } else {
-        process.stdout.write(JSON.stringify(jsonResults, null, 2) + "\n");
-      }
-    } else if (!opts.quiet || failCount > 0) {
-      process.stderr.write(
-        `Done: ${resolvedFiles.length - failCount} converted, ${failCount} failed\n`
-      );
-    }
-
-    process.exit(failCount > 0 ? 1 : 0);
+    finish(results, opts.quiet);
   });
 
 program.parseAsync(process.argv).catch((err) => {
-  process.stderr.write(`Fatal: ${(err as Error).message}\n`);
-  process.exit(1);
+  fail("INVALID_ARGS", (err as Error).message);
 });
