@@ -62,7 +62,7 @@ export interface ConvertOptions {
   // New processing options
   crop?: CropOptions;
   rotate?: number;         // degrees: 0, 90, 180, 270, or any angle
-  autoRotate?: boolean;    // use EXIF orientation
+  autoRotate?: boolean;    // EXIF orientation is always applied; kept for API compatibility
   flip?: boolean;          // horizontal mirror
   flop?: boolean;          // vertical mirror
   background?: string;     // CSS color string e.g. "#ffffff", "rgba(0,0,0,0)"

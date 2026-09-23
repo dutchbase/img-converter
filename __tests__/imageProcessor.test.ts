@@ -325,3 +325,27 @@ describe("processImage — unsupported format", () => {
     ).rejects.toThrow("Unsupported output format");
   });
 });
+
+describe("processImage — scan fixes", () => {
+  it("auto-orients EXIF orientation 6 even when metadata is removed", async () => {
+    const src = await sharp({ create: { width: 40, height: 20, channels: 3, background: "#f00" } })
+      .withMetadata({ orientation: 6 }).jpeg().toBuffer();
+    const out = await processImage(src, { ...baseOptions, targetFormat: "jpeg", removeMetadata: true });
+    const m = await sharp(out).metadata();
+    expect([m.width, m.height]).toEqual([20, 40]);
+  });
+
+  it("flattens transparency to white for JPEG when no background given", async () => {
+    const src = await sharp({ create: { width: 2, height: 2, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } }).png().toBuffer();
+    const out = await processImage(src, { ...baseOptions, targetFormat: "jpeg" });
+    const px = await sharp(out).raw().toBuffer();
+    expect(px[0]).toBeGreaterThan(240);
+  });
+
+  it("keeps animation for GIF → GIF", async () => {
+    const frame = (c: string) => sharp({ create: { width: 4, height: 4, channels: 3, background: c } }).png().toBuffer();
+    const src = await sharp([await frame("#f00"), await frame("#00f")], { join: { animated: true } }).gif().toBuffer();
+    const out = await processImage(src, { ...baseOptions, targetFormat: "gif" });
+    expect((await sharp(out).metadata()).pages).toBe(2);
+  });
+});

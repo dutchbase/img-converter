@@ -7,31 +7,6 @@ import DropZone from "./DropZone";
 import ConvertOptionsPanel from "./ConvertOptions";
 import BatchQueue from "./BatchQueue";
 
-/**
- * REQ-106: Detect animated GIF client-side via magic bytes and GCE marker count.
- * Pure synchronous function operating on bytes (not File, not async) — directly testable.
- * Returns true when buffer starts with GIF8 magic bytes AND contains more than one
- * Graphic Control Extension (0x21 0xF9) marker.
- *
- * Exported here for backward-compatibility with Phase 1 test stubs.
- */
-export function isAnimatedGif(bytes: Uint8Array): boolean {
-  // Must start with GIF magic bytes (GIF8)
-  if (bytes[0] !== 0x47 || bytes[1] !== 0x49 || bytes[2] !== 0x46 || bytes[3] !== 0x38) {
-    return false;
-  }
-  // Count Graphic Control Extension markers (0x21 0xF9)
-  let count = 0;
-  const limit = Math.min(bytes.length, 65536); // scan up to 64 KB
-  for (let i = 0; i < limit - 1; i++) {
-    if (bytes[i] === 0x21 && bytes[i + 1] === 0xF9) {
-      count++;
-      if (count > 1) return true;
-    }
-  }
-  return false;
-}
-
 const MAX_BATCH_FILES = 200;
 
 const DEFAULT_OPTIONS: ConvertOptions = {

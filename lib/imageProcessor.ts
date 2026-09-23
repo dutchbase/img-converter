@@ -16,11 +16,13 @@ export async function processImage(
   // REQ-101: Guard against decompression bombs
   // Use pre-computed metadata when available to avoid a redundant Sharp read
   const meta = precomputedMeta ?? await sharp(buffer).metadata();
-  if ((meta.width ?? 0) * (meta.height ?? 0) > 25_000_000) {
+  const pages = meta.pages ?? 1;
+  const animated = pages > 1 && (options.targetFormat === "gif" || options.targetFormat === "webp");
+  if ((meta.width ?? 0) * (meta.height ?? 0) * (animated ? pages : 1) > 25_000_000) {
     throw new Error("IMAGE_TOO_LARGE");
   }
 
-  let image = sharp(buffer, { limitInputPixels: 25_000_000 });
+  let image = sharp(buffer, { limitInputPixels: 25_000_000, animated });
 
   // REQ-103: Preserve ICC profile; strip other metadata only when requested
   if (options.removeMetadata) {
@@ -29,16 +31,13 @@ export async function processImage(
     image = image.withMetadata();
   }
 
-  // Auto-rotate using EXIF orientation
-  if (options.autoRotate) {
-    image = image.rotate();
-  } else if (options.rotate !== undefined && options.rotate !== 0) {
-    // Validate rotate range
+  // Always honor EXIF orientation — otherwise stripping metadata leaves phone photos sideways
+  image = image.autoOrient();
+  if (options.rotate !== undefined && options.rotate !== 0) {
     if (options.rotate < -360 || options.rotate > 360) {
       throw new Error("Rotate must be between -360 and 360 degrees");
     }
-    const bg = options.background ?? "#000000";
-    image = image.rotate(options.rotate, { background: bg });
+    image = image.rotate(options.rotate, { background: options.background ?? "#000000" });
   }
 
   // Intentional naming inversion between CLI/API and Sharp:
@@ -101,10 +100,10 @@ export async function processImage(
     image = image.trim();
   }
 
-  // Background fill (for transparency → opaque format conversion)
-  // Both JPEG and TIFF do not support alpha — flatten with background color
-  if (options.background && (options.targetFormat === "jpeg" || options.targetFormat === "tiff")) {
-    image = image.flatten({ background: options.background });
+  // JPEG has no alpha — flatten on white by default (libvips would use black).
+  // TIFF keeps alpha unless a background is requested.
+  if (options.targetFormat === "jpeg" || (options.background && options.targetFormat === "tiff")) {
+    image = image.flatten({ background: options.background ?? "#ffffff" });
   }
 
   // Convert to target format
