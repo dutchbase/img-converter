@@ -12,8 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
-    // CLI build output
+    // CLI build output and generated coverage report
     "dist/**",
+    "coverage/**",
   ]),
 ]);
 
