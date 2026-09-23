@@ -45,7 +45,8 @@ export function buildOutputPath(inputPath: string, format: ImageFormat, outputDi
   // Sanitize basename to prevent path traversal (e.g. "../../etc/passwd")
   const basename = path.basename(srcPath, path.extname(srcPath)).replace(/[^a-zA-Z0-9._-]/g, "_") || "output";
   const out = path.join(dir, `${basename}.${FORMAT_EXTENSIONS[format]}`);
-  if (!isUrl && path.resolve(out) === path.resolve(inputPath)) {
+  // Case-insensitive: Photo.JPG and Photo.jpg are the same file on macOS/Windows
+  if (!isUrl && path.resolve(out).toLowerCase() === path.resolve(inputPath).toLowerCase()) {
     throw new Error(`Output would overwrite input "${inputPath}" — choose an output directory`);
   }
   return out;

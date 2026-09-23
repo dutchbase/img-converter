@@ -348,4 +348,12 @@ describe("processImage — scan fixes", () => {
     const out = await processImage(src, { ...baseOptions, targetFormat: "gif" });
     expect((await sharp(out).metadata()).pages).toBe(2);
   });
+
+  it("converts animated WebP carrying EXIF orientation without throwing", async () => {
+    const frame = (c: string) => sharp({ create: { width: 4, height: 6, channels: 3, background: c } }).png().toBuffer();
+    const src = await sharp([await frame("#f00"), await frame("#00f")], { join: { animated: true } })
+      .withMetadata({ orientation: 6 }).webp().toBuffer();
+    const out = await processImage(src, { ...baseOptions, targetFormat: "webp" });
+    expect((await sharp(out).metadata()).pages).toBe(2);
+  });
 });

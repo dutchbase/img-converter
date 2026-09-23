@@ -31,8 +31,9 @@ export async function processImage(
     image = image.withMetadata();
   }
 
-  // Always honor EXIF orientation — otherwise stripping metadata leaves phone photos sideways
-  image = image.autoOrient();
+  // Always honor EXIF orientation — otherwise stripping metadata leaves phone photos sideways.
+  // Sharp can't rotate multi-page images; animated inputs are left as-is.
+  if (!animated) image = image.autoOrient();
   if (options.rotate !== undefined && options.rotate !== 0) {
     if (options.rotate < -360 || options.rotate > 360) {
       throw new Error("Rotate must be between -360 and 360 degrees");

@@ -158,6 +158,9 @@ describe("buildOutputPath — safety", () => {
   it("refuses to overwrite the input file", () => {
     expect(() => buildOutputPath("/photos/a.png", "png")).toThrow(/overwrite/);
   });
+  it("refuses case-only differences (same file on macOS/Windows)", () => {
+    expect(() => buildOutputPath("/photos/Photo.JPG", "jpeg")).toThrow(/overwrite/);
+  });
   it("allows same format when an output dir is given", () => {
     expect(buildOutputPath("/photos/a.png", "png", "/out")).toBe("/out/a.png");
   });
