@@ -55,7 +55,7 @@ export function errorCode(err: unknown): ErrorCode {
   const m = e.message ?? "";
   if (m === "IMAGE_TOO_LARGE" || /pixel limit/i.test(m)) return "IMAGE_TOO_LARGE";
   if (/private\/internal addresses|Unsupported protocol/.test(m)) return "BLOCKED_URL";
-  if (/^(Failed to fetch|Request timed out|Too many redirects|Response from|Invalid URL|No response body)/.test(m) || m === "fetch failed") {
+  if (/^(Failed to fetch|Request timed out|Too many redirects|Response from|Invalid URL|No response body|Redirect response)/.test(m) || m === "fetch failed") {
     return "FETCH_FAILED";
   }
   if (/unsupported image format|corrupt header|HEIC decode failed/i.test(m)) return "UNSUPPORTED_INPUT";
@@ -120,6 +120,9 @@ export async function runConvert(
       const output = job.output
         ? path.resolve(job.output)
         : path.resolve(buildOutputPath(input, job.options.targetFormat, job.outputDir));
+      if (!isUrl(input) && output.toLowerCase() === input.toLowerCase()) {
+        throw new CliError("OUTPUT_IS_INPUT", `Output would overwrite input "${input}" — choose a different output path`);
+      }
       const first = claimed.get(output.toLowerCase());
       if (first !== undefined) {
         throw new CliError(

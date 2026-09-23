@@ -46,11 +46,21 @@ function readStdin(): Promise<Buffer> {
 // ---------------------------------------------------------------------------
 // Usage errors: exit 2, as JSON on stdout when --json is present
 // ---------------------------------------------------------------------------
-const jsonMode = process.argv.includes("--json");
+// info always speaks JSON, with or without --json
+const jsonMode = process.argv.includes("--json") || process.argv[2] === "info";
 
+/**
+ * Write to stdout, then exit once it has flushed. process.exit() right after write()
+ * truncates piped output on macOS/Windows, where pipe writes are asynchronous.
+ */
+function writeAndExit(data: string | Buffer, code: number): void {
+  process.stdout.write(data, () => process.exit(code));
+}
+
+/** Usage error: exits immediately (small payload, so a synchronous write is safe). */
 function fail(code: ErrorCode, message: string): never {
   if (jsonMode) {
-    process.stdout.write(JSON.stringify({ error: { code, message } }) + "\n");
+    fs.writeSync(1, JSON.stringify({ error: { code, message } }) + "\n");
   } else {
     process.stderr.write(`Error: ${message}\n`);
   }
@@ -123,11 +133,10 @@ function printProgress(r: CliResult, quiet: boolean): void {
   }
 }
 
-function finish(results: CliResult[], quiet: boolean): never {
+function finish(results: CliResult[], quiet: boolean): void {
   const failed = results.filter((r) => !r.ok).length;
-  if (jsonMode) {
-    process.stdout.write(JSON.stringify(results, null, 2) + "\n");
-  } else if (!quiet || failed > 0) {
+  if (jsonMode) return writeAndExit(JSON.stringify(results, null, 2) + "\n", failed > 0 ? 1 : 0);
+  if (!quiet || failed > 0) {
     process.stderr.write(`Done: ${results.length - failed} converted, ${failed} failed\n`);
   }
   process.exit(failed > 0 ? 1 : 0);
@@ -155,8 +164,7 @@ program
   .option("--json", "Accepted for consistency; info always prints JSON")
   .action(async (patterns: string[]) => {
     const results = await runInfo(await resolveOrFail(patterns));
-    process.stdout.write(JSON.stringify(results, null, 2) + "\n");
-    process.exit(results.some((r) => !r.ok) ? 1 : 0);
+    return writeAndExit(JSON.stringify(results, null, 2) + "\n", results.some((r) => !r.ok) ? 1 : 0);
   });
 
 // ---------------------------------------------------------------------------
@@ -292,6 +300,9 @@ AI agents: run \`img-convert skill\` for the full usage guide.`
     if (isPipeMode(process.stdin.isTTY, files)) {
       try {
         const inputBuffer = await readStdin();
+        if (inputBuffer.length === 0) {
+          fail("NO_INPUT", "No input files given and stdin is empty. Pass file paths, or pipe an image into stdin.");
+        }
         // Magic bytes identify HEIC (there is no filename to go on)
         const { fileTypeFromBuffer } = await import("file-type");
         const detected = await fileTypeFromBuffer(inputBuffer);
@@ -300,8 +311,7 @@ AI agents: run \`img-convert skill\` for the full usage guide.`
         const outputBuffer = opts.maxSize
           ? (await processToMaxBytes(inputBuffer, convertOptions, opts.maxSize, sourceFormat)).buffer
           : await processImage(inputBuffer, convertOptions, sourceFormat);
-        process.stdout.write(outputBuffer);
-        process.exit(0);
+        return writeAndExit(outputBuffer, 0);
       } catch (err) {
         process.stderr.write(`Error: ${(err as Error).message}\n`);
         process.exit(1);

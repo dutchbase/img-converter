@@ -115,3 +115,11 @@ it("info reports upright dimensions for EXIF-rotated photos", async () => {
   const [r] = await runInfo([file]);
   expect(r).toMatchObject({ ok: true, width: 40, height: 60 });
 });
+
+it("refuses an explicit output equal to the input", async () => {
+  const input = path.join(dir, "a/x.png");
+  const before = await fs.readFile(input);
+  const [r] = await runConvert([{ input, output: input, options: { ...webp, targetFormat: "png" } }], { concurrency: 1 });
+  expect(r).toMatchObject({ ok: false, error: { code: "OUTPUT_IS_INPUT" } });
+  expect((await fs.readFile(input)).equals(before)).toBe(true);
+});
