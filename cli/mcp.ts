@@ -254,7 +254,7 @@ export async function startMcpServer(): Promise<void> {
       const meta = await getImageMetadata(buf);
 
       const info = {
-        format: meta.format ?? "unknown",
+        format: ext === "heic" ? "heic" : meta.format ?? "unknown",
         width: meta.width ?? 0,
         height: meta.height ?? 0,
         filesize: buffer.length,

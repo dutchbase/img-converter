@@ -136,7 +136,7 @@ export async function getInfo(input: string | Buffer): Promise<ImageInfo> {
   const meta = await getImageMetadata(sourceFormat === "heic" ? await decodeHeicToBuffer(buffer) : buffer);
 
   return {
-    format: meta.format ?? "unknown",
+    format: sourceFormat === "heic" ? "heic" : meta.format ?? "unknown",
     width: meta.width ?? 0,
     height: meta.height ?? 0,
     filesize,

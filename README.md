@@ -48,14 +48,9 @@ Fast, scriptable image conversion powered by [Sharp](https://sharp.pixelplumbing
 - [Agent Skill](#agent-skill)
 - [Installation](#installation)
 - [CLI Reference](#cli-reference)
-  - [Convert](#convert-default-action)
-  - [Info](#info-subcommand)
-  - [Batch](#batch-subcommand)
-  - [MCP Server](#mcp-server-subcommand)
 - [AI Agent Integration](#ai-agent-integration)
   - [MCP Tools](#mcp-tools)
-  - [JSON Output Design](#json-output-design)
-  - [Manifest Batch Mode](#manifest-batch-mode)
+  - [CLI for agents](#cli-for-agents)
 - [Node.js API](#nodejs-api)
   - [convert()](#convert)
   - [getInfo()](#getinfo)
@@ -71,33 +66,17 @@ Fast, scriptable image conversion powered by [Sharp](https://sharp.pixelplumbing
 
 ## Agent Skill
 
-`img-convert` ships a `SKILL.md` file that coding agents can import to get full, structured knowledge of every command, flag, pattern, and gotcha — without reading this README.
-
-### Import into Claude Code (global, all projects)
+`img-convert` ships a [`SKILL.md`](./SKILL.md) that teaches coding agents the CLI's JSON contract, exit and error codes, flags, batch manifests and task recipes. It's included in the npm package and printed by `img-convert skill`.
 
 ```bash
-/instinct-import https://raw.githubusercontent.com/dutchbase/img-converter/main/SKILL.md
+# Claude Code, all projects
+mkdir -p ~/.claude/skills/img-convert && img-convert skill > ~/.claude/skills/img-convert/SKILL.md
+
+# Claude Code, this project only
+mkdir -p .claude/skills/img-convert && img-convert skill > .claude/skills/img-convert/SKILL.md
 ```
 
-### Import as a project-scoped skill
-
-```bash
-/instinct-import https://raw.githubusercontent.com/dutchbase/img-converter/main/SKILL.md --scope project
-```
-
-Once imported, any Claude Code session automatically knows:
-
-- Which interface to use (CLI vs API vs MCP vs REST) for a given task
-- To always run `img-convert info` before converting unknown images
-- The `--json` / stderr separation contract for piping
-- Every CLI flag, including new ones (`--grayscale`, `--rotate`, `--normalize`, etc.)
-- The manifest format for `batch` subcommand
-- All MCP tool signatures and return shapes
-- The Node.js API types and common patterns
-- Format gotchas (HEIC input-only, alpha→JPEG background, animated GIF rules)
-- Common mistakes and how to avoid them
-
-The skill file is kept in sync with the package at [`SKILL.md`](./SKILL.md).
+Other agents can run `img-convert skill` to read the guide. A test (`__tests__/skill.test.ts`) fails if a CLI flag or command is missing from it.
 
 ---
 
@@ -140,255 +119,26 @@ npm run build      # production Next.js build
 
 ### Requirements
 
-- **Node.js >= 18.0.0**
+- **Node.js >= 20.9.0**
 - Sharp's native bindings are pre-built for Linux x64/arm64, macOS arm64/x64, and Windows x64. For other platforms, see the [Sharp installation guide](https://sharp.pixelplumbing.com/install).
 
 ---
 
 ## CLI Reference
 
-### Convert (default action)
-
-```
-img-convert [files...] -f <format> [options]
-```
-
-`files` accepts file paths, glob patterns, and HTTP/HTTPS URLs. When no files are provided and stdin is a pipe, reads from stdin and writes to stdout (pipe mode).
-
-#### Options
-
-| Flag | Default | Description |
-|------|---------|-------------|
-| `-f, --format <fmt>` | — | **Required.** Target format: `jpeg` `png` `webp` `avif` `gif` `tiff` |
-| `-q, --quality <n>` | `85` | Encoding quality 1–100. Applies to JPEG, WebP, AVIF, TIFF. PNG derives compression level from this value. GIF ignores it. |
-| `--width <n>` | — | Resize to this width in pixels. Aspect ratio maintained by default. |
-| `--height <n>` | — | Resize to this height in pixels. Aspect ratio maintained by default. |
-| `--no-metadata` | — | Strip EXIF/XMP/IPTC metadata. ICC color profile is always preserved. |
-| `-o, --output <dir>` | input dir | Write output files into this directory. Created automatically if it doesn't exist. |
-| `-c, --concurrency <n>` | `4` | Maximum parallel conversions. |
-| `--json` | — | Emit structured JSON to stdout. All progress and warnings go to stderr. |
-| `--dry-run` | — | Show what would be written without writing anything. |
-| `--quiet` | — | Suppress per-file progress lines. Error summary still shown. |
-| `--grayscale` | — | Desaturate the image to grayscale. |
-| `--rotate <n>` | — | Rotate by degrees. Any angle accepted; background color fills empty corners. |
-| `--flip` | — | Flip horizontally (left–right mirror). |
-| `--flop` | — | Flop vertically (top–bottom mirror). |
-| `--background <color>` | — | Background fill color for transparent areas (e.g. `#ffffff`, `rgba(0,0,0,0)`). Required for clean PNG→JPEG conversion. |
-| `--blur <n>` | — | Gaussian blur sigma (valid range: 0.3–1000). |
-| `--sharpen` | — | Apply unsharp mask sharpening with Sharp's default parameters. |
-| `--normalize` | — | Stretch contrast to full range. Useful for scanned documents and low-contrast images. |
-| `--trim` | — | Auto-trim uniform-color border pixels from all edges. |
-
-#### Examples
+The complete reference (every flag, the JSON contract, error codes, manifest keys and recipes) lives in **[SKILL.md](./SKILL.md)**, also printed by `img-convert skill`. `img-convert --help` shows the flags with examples.
 
 ```bash
-# Single file
-img-convert photo.jpg -f webp
-
-# Glob pattern with output directory and quality
-img-convert "src/images/*.png" -f avif -q 80 -o dist/images/
-
-# Resize to max 1280px wide, maintain aspect ratio
-img-convert banner.png -f jpeg --width 1280 -q 90
-
-# Strip metadata, 4 files at once
-img-convert *.jpg -f webp --no-metadata -c 4 -o output/
-
-# Remote URL
-img-convert https://example.com/photo.png -f webp -o ./converted/
-
-# Machine-readable output — stdout is pure JSON, stderr is progress
-img-convert photo.jpg -f webp --json 2>/dev/null | jq .reduction
-
-# Pipe mode: stdin → stdout (no file args, non-TTY stdin)
-cat input.png | img-convert -f webp > output.webp
-
-# Preview without writing
-img-convert "*.jpg" -f avif --dry-run --json
-
-# Grayscale + auto contrast for document scans
-img-convert scan.jpg -f png --grayscale --normalize
-
-# Flatten PNG transparency to white before JPEG conversion
-img-convert logo.png -f jpeg --background "#ffffff"
-
-# Rotate with background fill
-img-convert photo.jpg -f jpeg --rotate 90 --background "#000000"
+img-convert photo.jpg -f webp --json                                   # convert one file
+img-convert "shots/*.png" -f jpeg --width 200 --height 200 --fit cover -o thumbs --json   # thumbnails
+img-convert big.png -f jpeg --max-size 200KB --json                    # fit a byte budget
+img-convert info "shots/*.png"                                         # metadata as a JSON array
+img-convert batch jobs.json --json                                     # per-file settings from a manifest
 ```
 
-#### JSON output shape
+With `--json`, stdout is always a JSON array in input order. Each item has `index`, `ok` and either the result fields or `error: { code, message }`.
 
-**Single file:**
-
-```json
-{
-  "input": "photo.jpg",
-  "output": "/absolute/path/to/photo.webp",
-  "inputBytes": 204800,
-  "outputBytes": 81920,
-  "reduction": 60.0,
-  "width": 1920,
-  "height": 1080,
-  "format": "webp",
-  "quality": 85
-}
-```
-
-**Multiple files:** JSON array with one object per file. Failed files include an `"error"` string field instead of size/dimension data.
-
-**Dry run (with `--json`):**
-
-```json
-{
-  "input": "photo.jpg",
-  "output": "/absolute/path/to/photo.webp",
-  "inputBytes": 204800,
-  "dryRun": true
-}
-```
-
----
-
-### `info` subcommand
-
-Inspect an image without converting it. Always outputs JSON to stdout. Supports file paths and URLs.
-
-```bash
-img-convert info <file|url>
-```
-
-```bash
-img-convert info photo.jpg
-img-convert info https://example.com/image.png
-```
-
-**Output:**
-
-```json
-{
-  "format": "jpeg",
-  "width": 4032,
-  "height": 3024,
-  "filesize": 3891200,
-  "hasAlpha": false,
-  "hasExif": true,
-  "colorSpace": "srgb",
-  "isAnimated": false,
-  "channels": 3,
-  "density": 72
-}
-```
-
-**Field reference:**
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `format` | string | Format as detected by Sharp: `jpeg`, `png`, `webp`, `gif`, `tiff`, `avif`, etc. |
-| `width` | number | Width in pixels |
-| `height` | number | Height in pixels |
-| `filesize` | number | File size in bytes |
-| `hasAlpha` | boolean | Whether an alpha (transparency) channel is present |
-| `hasExif` | boolean | Whether EXIF metadata is present |
-| `colorSpace` | string | Color space: `srgb`, `p3`, `cmyk`, `grey`, etc. |
-| `isAnimated` | boolean | `true` for animated GIFs, multi-page TIFFs, animated WebP |
-| `channels` | number | Channel count — 3 = RGB, 4 = RGBA |
-| `density` | number | DPI/PPI as embedded in file metadata. `undefined` if not set. |
-
-The `info` command is designed for **pre-conversion inspection** — check `hasAlpha` before converting to JPEG, check `isAnimated` before stripping frames, verify dimensions before a resize.
-
----
-
-### `batch` subcommand
-
-Convert a list of images defined in a JSON manifest file.
-
-```bash
-img-convert batch <manifest.json> [options]
-```
-
-**Options:**
-
-| Flag | Default | Description |
-|------|---------|-------------|
-| `-c, --concurrency <n>` | `4` | Parallel conversion limit |
-| `--json` | — | Output results as a JSON array to stdout |
-
-**Manifest format:**
-
-```json
-[
-  {
-    "input": "src/hero.png",
-    "output": "dist/hero.webp",
-    "format": "webp",
-    "quality": 90
-  },
-  {
-    "input": "https://cdn.example.com/avatar.png",
-    "output": "assets/avatar.avif",
-    "format": "avif",
-    "width": 200,
-    "height": 200
-  },
-  {
-    "input": "photos/raw.jpg",
-    "format": "jpeg",
-    "quality": 75,
-    "removeMetadata": true
-  }
-]
-```
-
-If `output` is omitted, the file is written next to the input with the new extension.
-
-**Manifest item fields:**
-
-| Field | Required | Description |
-|-------|----------|-------------|
-| `input` | Yes | File path or HTTP/HTTPS URL |
-| `format` | Yes | Target format |
-| `output` | No | Output file path. Auto-derived from `input` if omitted. |
-| `quality` | No | Quality 1–100, default `85` |
-| `width` | No | Resize width in pixels |
-| `height` | No | Resize height in pixels |
-| `removeMetadata` | No | Strip EXIF metadata, default `false` |
-
-```bash
-# Process manifest, capture JSON results
-img-convert batch jobs.json --json > results.json 2>/dev/null
-
-# Process with human-readable progress
-img-convert batch jobs.json -c 8
-```
-
-**JSON output per item:**
-
-```json
-{
-  "index": 0,
-  "input": "src/hero.png",
-  "output": "dist/hero.webp",
-  "inputBytes": 512000,
-  "outputBytes": 102400,
-  "reduction": 80.0,
-  "width": 1920,
-  "height": 1080,
-  "format": "webp",
-  "quality": 90
-}
-```
-
----
-
-### `mcp` subcommand
-
-Start an MCP (Model Context Protocol) server on stdio. This is the primary integration point for AI agents.
-
-```bash
-img-convert mcp
-```
-
-See [AI Agent Integration](#ai-agent-integration) for full details.
+**Exit codes:** `0` all ok · `1` some items failed (stdout still has the full array) · `2` usage error (`{"error":{...}}` on stdout with `--json`).
 
 ---
 
@@ -402,18 +152,11 @@ See [AI Agent Integration](#ai-agent-integration) for full details.
 
 #### Register with Claude Code
 
-Add to `~/.claude/mcp.json`:
-
-```json
-{
-  "mcpServers": {
-    "img-convert": {
-      "command": "img-convert",
-      "args": ["mcp"]
-    }
-  }
-}
+```bash
+claude mcp add img-convert -- img-convert mcp
 ```
+
+The server resolves file paths against, and restricts them to, its working directory.
 
 After registering, Claude Code can call `convert_image`, `get_image_info`, `batch_convert`, and `list_supported_formats` as native tools — with full type checking, no shell escaping, and structured return values.
 
@@ -537,60 +280,9 @@ Enumerate what the server can read and write.
 }
 ```
 
-### JSON Output Design
+### CLI for agents
 
-Every command is designed to produce parseable, pipeable output:
-
-- **`--json` flag**: data on stdout as JSON, all progress/warnings on stderr
-- **`info` subcommand**: always JSON, no flag needed
-- **`batch --json`**: JSON array with one entry per manifest item
-
-This gives agents and scripts clean signal separation:
-
-```bash
-# Capture reduction percentage
-REDUCTION=$(img-convert photo.jpg -f webp --json 2>/dev/null | jq .reduction)
-
-# Inspect before converting
-HAS_ALPHA=$(img-convert info logo.png | jq .hasAlpha)
-if [ "$HAS_ALPHA" = "true" ]; then
-  img-convert logo.png -f jpeg --background "#ffffff" --json 2>/dev/null
-else
-  img-convert logo.png -f jpeg --json 2>/dev/null
-fi
-
-# Count failed conversions in a batch
-FAILED=$(img-convert batch jobs.json --json 2>/dev/null | jq '[.[] | select(.error)] | length')
-```
-
-### Manifest Batch Mode
-
-AI agents work naturally with JSON as a data format. The manifest pattern decouples job definition from execution — the agent assembles the job list as a data structure, writes it to a file, and `img-convert batch` executes it:
-
-```typescript
-// Agent builds the manifest
-const manifest = imagePaths.map(inputPath => ({
-  input: inputPath,
-  output: inputPath.replace(/\.\w+$/, '.webp'),
-  format: 'webp' as const,
-  quality: 85,
-}))
-
-fs.writeFileSync('convert-jobs.json', JSON.stringify(manifest, null, 2))
-
-// Agent executes it and reads structured results
-const stdout = execSync('img-convert batch convert-jobs.json --json 2>/dev/null', {
-  encoding: 'utf8',
-})
-const results = JSON.parse(stdout)
-const totalSaved = results.reduce(
-  (sum: number, r: { inputBytes: number; outputBytes: number }) =>
-    sum + (r.inputBytes - r.outputBytes),
-  0
-)
-```
-
-No shell interpolation, no quoting edge cases, fully declarative, fully auditable.
+Agents that use a shell should call the CLI with `--json`. The contract (ordered arrays, `ok` per item, stable error codes, exit code 2 for usage errors) and batch manifests are documented in [SKILL.md](./SKILL.md).
 
 ---
 
