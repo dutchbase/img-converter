@@ -128,7 +128,7 @@ Convert, batch and dry-run all print **an array in input order**. `input` is the
   "isAnimated": false, "pages": 1, "channels": 4, "density": 72 }
 ```
 
-Failed `info` items have the same `{ ok: false, error }` shape. HEIC files report `"format": "heic"`.
+`width`/`height` are the upright size (EXIF orientation applied), which is what a conversion produces. Failed `info` items have the same `{ ok: false, error }` shape. HEIC files report `"format": "heic"`.
 
 Usage errors (exit 2) with `--json` print one object: `{"error":{"code":"INVALID_ARGS","message":"Unknown format \"bmp\". Valid formats: ..."}}`. Commander's own errors (unknown flag, invalid `--fit` choice, missing argument) also exit 2 but print text on stderr only.
 

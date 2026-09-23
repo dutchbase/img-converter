@@ -108,3 +108,10 @@ describe("manifestToJobs", () => {
     expect(() => manifestToJobs({})).toThrow(/array/);
   });
 });
+
+it("info reports upright dimensions for EXIF-rotated photos", async () => {
+  const file = path.join(dir, "rotated.jpg");
+  await sharp({ create: { width: 60, height: 40, channels: 3, background: "#00f" } }).withMetadata({ orientation: 6 }).jpeg().toFile(file);
+  const [r] = await runInfo([file]);
+  expect(r).toMatchObject({ ok: true, width: 40, height: 60 });
+});

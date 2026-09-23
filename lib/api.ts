@@ -137,8 +137,8 @@ export async function getInfo(input: string | Buffer): Promise<ImageInfo> {
 
   return {
     format: sourceFormat === "heic" ? "heic" : meta.format ?? "unknown",
-    width: meta.width ?? 0,
-    height: meta.height ?? 0,
+    width: meta.autoOrient?.width ?? meta.width ?? 0,
+    height: meta.autoOrient?.height ?? meta.height ?? 0,
     filesize,
     hasAlpha: (meta.channels ?? 0) === 4 || meta.hasAlpha === true,
     hasExif: meta.exif !== undefined && meta.exif.length > 0,

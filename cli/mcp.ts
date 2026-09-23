@@ -255,8 +255,8 @@ export async function startMcpServer(): Promise<void> {
 
       const info = {
         format: ext === "heic" ? "heic" : meta.format ?? "unknown",
-        width: meta.width ?? 0,
-        height: meta.height ?? 0,
+        width: meta.autoOrient?.width ?? meta.width ?? 0,
+        height: meta.autoOrient?.height ?? meta.height ?? 0,
         filesize: buffer.length,
         hasAlpha: (meta.channels ?? 0) === 4 || meta.hasAlpha === true,
         hasExif: meta.exif !== undefined && meta.exif.length > 0,

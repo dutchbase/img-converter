@@ -192,8 +192,9 @@ export async function runInfo(inputs: string[]): Promise<InfoResult[]> {
       results.push({
         index, ok: true, input,
         format: isHeic ? "heic" : meta.format ?? "unknown",
-        width: meta.width ?? 0,
-        height: meta.height ?? 0,
+        // Upright size (EXIF orientation applied) — what a conversion will produce
+        width: meta.autoOrient?.width ?? meta.width ?? 0,
+        height: meta.autoOrient?.height ?? meta.height ?? 0,
         filesize: buffer.length,
         hasAlpha: (meta.channels ?? 0) === 4 || meta.hasAlpha === true,
         hasExif: meta.exif !== undefined && meta.exif.length > 0,
