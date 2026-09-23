@@ -40,4 +40,29 @@ describe("processingQueue (REQ-205)", () => {
     await sema.acquire();
     sema.release();
   });
+
+  it("a timed-out acquire() does not leak a permit", async () => {
+    jest.useFakeTimers();
+    process.env.SHARP_CONCURRENCY = "1";
+    try {
+      await jest.isolateModulesAsync(async () => {
+        const { processingQueue: q } = await import("@/lib/processingQueue");
+        await q.acquire();
+        const second = q.acquire();
+        jest.advanceTimersByTime(60_001);
+        await expect(second).rejects.toThrow(/timed out/);
+
+        q.release();
+        let thirdAcquired = false;
+        const third = q.acquire().then(() => { thirdAcquired = true; });
+        await jest.advanceTimersByTimeAsync(0);
+        expect(thirdAcquired).toBe(true);
+        await third;
+        q.release();
+      });
+    } finally {
+      delete process.env.SHARP_CONCURRENCY;
+      jest.useRealTimers();
+    }
+  });
 });

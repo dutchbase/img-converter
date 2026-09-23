@@ -15,10 +15,21 @@ const _sema = new Sema(concurrency);
 
 export const processingQueue = {
   async acquire(): Promise<void> {
-    const timeout = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("Processing queue acquire timed out after 60s")), ACQUIRE_TIMEOUT_MS)
-    );
-    await Promise.race([_sema.acquire(), timeout]);
+    let timedOut = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    // If we give up waiting, hand the permit back the moment it arrives
+    const acquired = _sema.acquire().then(() => { if (timedOut) _sema.release(); });
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        timedOut = true;
+        reject(new Error("Processing queue acquire timed out after 60s"));
+      }, ACQUIRE_TIMEOUT_MS);
+    });
+    try {
+      await Promise.race([acquired, timeout]);
+    } finally {
+      clearTimeout(timer);
+    }
   },
   release(): void {
     _sema.release();
