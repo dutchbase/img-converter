@@ -240,3 +240,53 @@ describe("POST /api/convert — REQ-501: structured error responses", () => {
     expect(body.field).toBe("targetFormat");
   });
 });
+
+describe("POST /api/convert — scan fixes", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    fileTypeMock.__setMockResult({ mime: "image/jpeg", ext: "jpg" });
+    (detectFormat as jest.Mock).mockImplementation((m: string) =>
+      ({ "image/jpeg": "jpeg", "image/heic": "heic" } as Record<string, string>)[m] ?? null
+    );
+    (sharp as unknown as jest.Mock).mockImplementation(() => ({
+      metadata: jest.fn().mockResolvedValue({ width: 100, height: 100 }),
+    }));
+    (processImage as jest.Mock).mockResolvedValue(Buffer.from("out"));
+  });
+
+  it("accepts HEIC sent as application/octet-stream (Firefox) using magic bytes", async () => {
+    fileTypeMock.__setMockResult({ mime: "image/heic", ext: "heic" });
+    const file = new File([new Uint8Array([0, 0, 0, 0x18])], "p.heic", { type: "application/octet-stream" });
+    const res = await POST(makeValidRequest({ file, targetFormat: "jpeg" }));
+    expect(res.status).toBe(200);
+    const call = (processImage as jest.Mock).mock.calls.at(-1)!;
+    expect(call[2]).toBe("heic");
+    expect(call[3]).toBeUndefined(); // no pre-decode Sharp metadata for HEIC
+  });
+
+  it("maps IMAGE_TOO_LARGE from processImage to 422", async () => {
+    (processImage as jest.Mock).mockRejectedValue(new Error("IMAGE_TOO_LARGE"));
+    const res = await POST(makeValidRequest());
+    expect(res.status).toBe(422);
+    expect((await res.json()).error).toBe("IMAGE_TOO_LARGE");
+  });
+
+  it("rejects non-numeric rotate with 400", async () => {
+    const fd = await makeValidRequest().formData();
+    fd.append("rotate", "abc");
+    const res = await POST(new NextRequest("http://localhost/api/convert", { method: "POST", body: fd }));
+    expect(res.status).toBe(400);
+    expect((await res.json()).field).toBe("rotate");
+  });
+
+  it("sends Retry-After on 429", async () => {
+    let res: Response | undefined;
+    for (let i = 0; i < 31; i++) {
+      res = await POST(new NextRequest("http://localhost/api/convert", {
+        method: "POST", headers: { "x-forwarded-for": "9.9.9.9" }, body: new FormData(),
+      }));
+    }
+    expect(res!.status).toBe(429);
+    expect(Number(res!.headers.get("Retry-After"))).toBeGreaterThan(0);
+  });
+});

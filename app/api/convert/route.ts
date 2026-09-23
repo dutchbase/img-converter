@@ -24,20 +24,18 @@ const RATE_LIMIT_MAX = 30;
 
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 
-function checkRateLimit(ip: string): boolean {
+/** Returns seconds the client must wait, or 0 when the request is allowed. */
+function checkRateLimit(ip: string): number {
   const now = Date.now();
   const entry = rateLimitMap.get(ip);
 
   if (!entry || now > entry.resetAt) {
     rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
-    return true;
+    return 0;
   }
 
   entry.count++;
-  if (entry.count > RATE_LIMIT_MAX) {
-    return false;
-  }
-  return true;
+  return entry.count > RATE_LIMIT_MAX ? Math.ceil((entry.resetAt - now) / 1000) : 0;
 }
 
 // Periodically clean up stale entries to prevent unbounded growth
@@ -69,8 +67,12 @@ function errorResponse(body: ApiErrorResponse, status: number): NextResponse {
 export async function POST(req: NextRequest) {
   // Rate limiting
   const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? req.headers.get("x-real-ip") ?? "unknown";
-  if (!checkRateLimit(clientIp)) {
-    return errorResponse({ error: "RATE_LIMIT_EXCEEDED", message: "Too many requests. Please try again later." }, 429);
+  const retryAfter = checkRateLimit(clientIp);
+  if (retryAfter) {
+    return NextResponse.json(
+      { error: "RATE_LIMIT_EXCEEDED", message: "Too many requests. Please try again later." },
+      { status: 429, headers: { "Retry-After": String(retryAfter) } }
+    );
   }
 
   try {
@@ -83,12 +85,6 @@ export async function POST(req: NextRequest) {
 
     if (file.size > MAX_FILE_SIZE) {
       return errorResponse({ error: "FILE_TOO_LARGE", message: "File exceeds 50 MB limit" }, 413);
-    }
-
-    // Fast format pre-filter based on browser-supplied MIME type
-    const sourceFormat = detectFormat(file.type);
-    if (!sourceFormat) {
-      return errorResponse({ error: "UNSUPPORTED_FORMAT", message: "Unsupported image format" }, 400);
     }
 
     const targetFormat = formData.get("targetFormat") as ImageFormat | null;
@@ -133,17 +129,21 @@ export async function POST(req: NextRequest) {
     // REQ-104: Magic-byte MIME verification — authoritative security gate
     // Use dynamic import to avoid ERR_REQUIRE_ESM in Next.js CJS context
     const { fileTypeFromBuffer } = await import("file-type");
+    // Magic bytes decide the source format; the browser-supplied MIME is unreliable
+    // (Firefox sends .heic as application/octet-stream) and spoofable.
     const detected = await fileTypeFromBuffer(inputBuffer);
-    if (!detected || !detectFormat(detected.mime)) {
+    const sourceFormat = detected ? detectFormat(detected.mime) : null;
+    if (!sourceFormat) {
       return errorResponse(
         { error: "UNSUPPORTED_FORMAT", message: "File type does not match its contents" },
         415
       );
     }
 
-    // REQ-101: Pixel dimension pre-check — reject images exceeding 25 megapixels
-    const meta = await sharp(inputBuffer).metadata();
-    if ((meta.width ?? 0) * (meta.height ?? 0) > MAX_PIXELS) {
+    // REQ-101: Pixel dimension pre-check — reject images exceeding 25 megapixels.
+    // Sharp can't read HEIC before decoding; processImage checks it after decoding.
+    const meta = sourceFormat === "heic" ? undefined : await sharp(inputBuffer).metadata();
+    if (meta && (meta.width ?? 0) * (meta.height ?? 0) > MAX_PIXELS) {
       return errorResponse(
         { error: "IMAGE_TOO_LARGE", message: "Image dimensions exceed limit" },
         422
@@ -196,6 +196,16 @@ export async function POST(req: NextRequest) {
     const normalize = formData.get("normalize") === "true" ? true : undefined;
     const trim = formData.get("trim") === "true" ? true : undefined;
 
+    if (rotate !== undefined && (!Number.isFinite(rotate) || Math.abs(rotate) > 360)) {
+      return errorResponse(
+        { error: "INVALID_ROTATE", message: "Rotate must be between -360 and 360", field: "rotate" },
+        400
+      );
+    }
+    if (blur !== undefined && !Number.isFinite(blur)) {
+      return errorResponse({ error: "INVALID_BLUR", message: "Blur must be a number", field: "blur" }, 400);
+    }
+
     const options: ConvertOptions = {
       targetFormat,
       quality,
@@ -217,7 +227,7 @@ export async function POST(req: NextRequest) {
     await processingQueue.acquire();
     let outputBuffer: Buffer;
     try {
-      outputBuffer = await processImage(inputBuffer, options, sourceFormat ?? undefined, meta);
+      outputBuffer = await processImage(inputBuffer, options, sourceFormat, meta);
     } catch (processErr) {
       if (
         processErr instanceof Error &&
@@ -227,6 +237,9 @@ export async function POST(req: NextRequest) {
           { error: "LIVE_PHOTO_NOT_SUPPORTED", message: "Live Photo detected — only still frames are supported." },
           422
         );
+      }
+      if (processErr instanceof Error && processErr.message === "IMAGE_TOO_LARGE") {
+        return errorResponse({ error: "IMAGE_TOO_LARGE", message: "Image dimensions exceed limit" }, 422);
       }
       throw processErr;
     } finally {
