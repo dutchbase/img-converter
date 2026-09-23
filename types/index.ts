@@ -56,6 +56,7 @@ export interface ConvertOptions {
   maintainAspectRatio: boolean;
   removeMetadata: boolean;
   allowUpscaling?: boolean;
+  fit?: "inside" | "cover" | "contain" | "fill"; // overrides maintainAspectRatio when set
   // New processing options
   crop?: CropOptions;
   rotate?: number;         // degrees: 0, 90, 180, 270, or any angle

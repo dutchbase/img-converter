@@ -1,7 +1,7 @@
 import sharp from "sharp";
 import path from "path";
 import fs from "fs";
-import { processImage, detectFormat } from "@/lib/imageProcessor";
+import { processImage, processToMaxBytes, detectFormat } from "@/lib/imageProcessor";
 import { ConvertOptions } from "@/types";
 
 const FIXTURES = path.join(__dirname, "fixtures");
@@ -355,5 +355,33 @@ describe("processImage — scan fixes", () => {
       .withMetadata({ orientation: 6 }).webp().toBuffer();
     const out = await processImage(src, { ...baseOptions, targetFormat: "webp" });
     expect((await sharp(out).metadata()).pages).toBe(2);
+  });
+});
+
+describe("processImage — fit", () => {
+  it("cover produces exact dimensions", async () => {
+    const src = await sharp({ create: { width: 40, height: 20, channels: 3, background: "#f00" } }).png().toBuffer();
+    const out = await processImage(src, { ...baseOptions, resizeWidth: 10, resizeHeight: 10, fit: "cover" });
+    const m = await sharp(out).metadata();
+    expect([m.width, m.height]).toEqual([10, 10]);
+  });
+});
+
+describe("processToMaxBytes", () => {
+  const noisy = () => sharp(Buffer.from(Array.from({ length: 64 * 64 * 3 }, (_, i) => (i * 7919) % 256)),
+    { raw: { width: 64, height: 64, channels: 3 } }).png().toBuffer();
+
+  it("returns the highest quality that fits the budget", async () => {
+    const src = await noisy();
+    const full = await processImage(src, { ...baseOptions, targetFormat: "jpeg", quality: 90 });
+    const budget = Math.floor(full.length * 0.6);
+    const { buffer, quality } = await processToMaxBytes(src, { ...baseOptions, targetFormat: "jpeg", quality: 90 }, budget);
+    expect(buffer.length).toBeLessThanOrEqual(budget);
+    expect(quality).toBeLessThan(90);
+  });
+
+  it("throws MAX_SIZE_UNREACHABLE when even quality 1 is too big", async () => {
+    await expect(processToMaxBytes(await noisy(), { ...baseOptions, targetFormat: "jpeg", quality: 90 }, 10))
+      .rejects.toMatchObject({ code: "MAX_SIZE_UNREACHABLE" });
   });
 });

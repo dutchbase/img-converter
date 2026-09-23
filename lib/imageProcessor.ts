@@ -68,7 +68,7 @@ export async function processImage(
     image = image.resize({
       width: options.resizeWidth ?? undefined,
       height: options.resizeHeight ?? undefined,
-      fit: options.maintainAspectRatio ? "inside" : "fill",
+      fit: options.fit ?? (options.maintainAspectRatio ? "inside" : "fill"),
       // REQ-107: Prevent upscaling unless explicitly allowed
       withoutEnlargement: !options.allowUpscaling,
       background: options.background ?? { r: 255, g: 255, b: 255, alpha: 1 },
@@ -160,4 +160,41 @@ export function detectFormat(mimeType: string): ImageFormat | null {
  */
 export async function getImageMetadata(buffer: Buffer): Promise<sharp.Metadata> {
   return sharp(buffer).metadata();
+}
+
+/**
+ * Binary-search the highest quality (≤ options.quality) whose output fits in maxBytes.
+ * Lossy formats only (QUALITY_FORMATS); ~7 encodes, so AVIF is slow here.
+ */
+export async function processToMaxBytes(
+  buffer: Buffer,
+  options: ConvertOptions,
+  maxBytes: number,
+  sourceFormat?: ImageFormat
+): Promise<{ buffer: Buffer; quality: number }> {
+  if (sourceFormat === "heic") {
+    buffer = await decodeHeicToBuffer(buffer); // decode once, not per attempt
+    sourceFormat = undefined;
+  }
+  const meta = await sharp(buffer).metadata();
+  let lo = 1;
+  let hi = options.quality;
+  let best: { buffer: Buffer; quality: number } | null = null;
+  while (lo <= hi) {
+    const quality = Math.floor((lo + hi) / 2);
+    const out = await processImage(buffer, { ...options, quality }, sourceFormat, meta);
+    if (out.length <= maxBytes) {
+      best = { buffer: out, quality };
+      lo = quality + 1;
+    } else {
+      hi = quality - 1;
+    }
+  }
+  if (!best) {
+    throw Object.assign(
+      new Error(`Cannot fit under ${maxBytes} bytes even at quality 1 — also reduce --width/--height`),
+      { code: "MAX_SIZE_UNREACHABLE" }
+    );
+  }
+  return best;
 }
