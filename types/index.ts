@@ -1,4 +1,4 @@
-export type ImageFormat = "jpeg" | "png" | "webp" | "avif" | "gif" | "tiff" | "heic" | "svg" | "bmp";
+export type ImageFormat = "jpeg" | "png" | "webp" | "avif" | "gif" | "tiff" | "heic" | "svg";
 
 export const FORMAT_LABELS: Record<ImageFormat, string> = {
   jpeg: "JPG",
@@ -9,7 +9,6 @@ export const FORMAT_LABELS: Record<ImageFormat, string> = {
   tiff: "TIFF",
   heic: "HEIC",
   svg: "SVG",
-  bmp: "BMP",
 };
 
 export const FORMAT_MIME: Record<ImageFormat, string> = {
@@ -21,7 +20,6 @@ export const FORMAT_MIME: Record<ImageFormat, string> = {
   tiff: "image/tiff",
   heic: "image/heic",
   svg: "image/svg+xml",
-  bmp: "image/bmp",
 };
 
 export const FORMAT_EXTENSIONS: Record<ImageFormat, string> = {
@@ -33,7 +31,6 @@ export const FORMAT_EXTENSIONS: Record<ImageFormat, string> = {
   tiff: "tiff",
   heic: "heic",
   svg: "svg",
-  bmp: "bmp",
 };
 
 export const QUALITY_FORMATS: ImageFormat[] = ["jpeg", "webp", "avif"];
@@ -42,7 +39,7 @@ export const QUALITY_FORMATS: ImageFormat[] = ["jpeg", "webp", "avif"];
 export const OUTPUT_FORMATS: ImageFormat[] = ["jpeg", "png", "webp", "avif", "gif", "tiff"];
 
 // Formats accepted as input only (Sharp cannot encode these)
-export const INPUT_ONLY_FORMATS: ImageFormat[] = ["heic", "svg", "bmp"];
+export const INPUT_ONLY_FORMATS: ImageFormat[] = ["heic", "svg"];
 
 export interface CropOptions {
   left: number;

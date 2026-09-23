@@ -532,7 +532,7 @@ Enumerate what the server can read and write.
 
 ```json
 {
-  "input": ["jpeg", "png", "webp", "avif", "gif", "tiff", "heic", "svg", "bmp"],
+  "input": ["jpeg", "png", "webp", "avif", "gif", "tiff", "heic", "svg"],
   "output": ["jpeg", "png", "webp", "avif", "gif", "tiff"]
 }
 ```
@@ -892,7 +892,6 @@ curl -sI -X POST http://localhost:3000/api/convert \
 | TIFF | `image/tiff` | |
 | HEIC / HEIF | `image/heic`, `image/heif`, `image/heic-sequence`, `image/heif-sequence` | Pre-decoded via `heic-convert`. Adds ~200–500 ms per file. |
 | SVG | `image/svg+xml` | Rasterized via librsvg (Sharp built-in). Output size = SVG declared dimensions unless overridden with `--width`/`--height`. |
-| BMP | `image/bmp` | Read only. Sharp has no BMP output encoder. |
 
 ### Output formats
 

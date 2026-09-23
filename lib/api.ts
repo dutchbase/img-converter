@@ -130,10 +130,10 @@ export async function convert(
  * @param input File path, URL, or Buffer
  */
 export async function getInfo(input: string | Buffer): Promise<ImageInfo> {
-  const { buffer } = await resolveInput(input);
+  const { buffer, sourceFormat } = await resolveInput(input);
 
   const filesize = buffer.length;
-  const meta = await getImageMetadata(buffer);
+  const meta = await getImageMetadata(sourceFormat === "heic" ? await decodeHeicToBuffer(buffer) : buffer);
 
   return {
     format: meta.format ?? "unknown",
@@ -214,13 +214,8 @@ export async function batch(
     )
   );
 
-  // Return results for fulfilled items, re-throw first rejection if all failed
-  const results: BatchApiResult[] = [];
-  for (const result of settled) {
-    if (result.status === "fulfilled") {
-      results.push(result.value);
-    }
-    // Rejected items are silently skipped — caller gets partial results
-  }
-  return results;
+  // Partial failures return partial results; total failure surfaces the first error
+  const failures = settled.filter((r): r is PromiseRejectedResult => r.status === "rejected");
+  if (failures.length > 0 && failures.length === settled.length) throw failures[0].reason;
+  return settled.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
 }

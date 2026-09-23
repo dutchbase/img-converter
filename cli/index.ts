@@ -55,6 +55,15 @@ function isUrl(s: string): boolean {
   return s.startsWith("http://") || s.startsWith("https://");
 }
 
+const positiveInt = (name: string) => (v: string): number => {
+  const n = parseInt(v, 10);
+  if (isNaN(n) || n < 1) {
+    console.error(`Error: ${name} must be a positive integer`);
+    process.exit(1);
+  }
+  return n;
+};
+
 // ---------------------------------------------------------------------------
 // Commander program definition
 // ---------------------------------------------------------------------------
@@ -80,6 +89,7 @@ program
         buffer = await fs.readFile(file);
       }
 
+      const filesize = buffer.length;
       // HEIC pre-decode if needed
       const ext = detectFormatFromExt(file);
       if (ext === "heic") {
@@ -91,7 +101,7 @@ program
         format: meta.format ?? "unknown",
         width: meta.width ?? 0,
         height: meta.height ?? 0,
-        filesize: buffer.length,
+        filesize,
         hasAlpha: (meta.channels ?? 0) === 4 || meta.hasAlpha === true,
         hasExif: meta.exif !== undefined && meta.exif.length > 0,
         colorSpace: meta.space ?? "unknown",
@@ -113,7 +123,7 @@ program
 program
   .command("batch <manifest>")
   .description("Batch convert images from a JSON manifest file")
-  .option("-c, --concurrency <n>", "Parallel conversion limit", (v: string) => parseInt(v, 10), 4)
+  .option("-c, --concurrency <n>", "Parallel conversion limit", positiveInt("concurrency"), 4)
   .option("--json", "Output results as JSON array")
   .action(async (manifestPath: string, opts: { concurrency: number; json: boolean }) => {
     let manifest: ManifestItem[];
@@ -252,37 +262,11 @@ program
     },
     85
   )
-  .option("--width <n>", "Resize width in pixels", (v: string) => {
-    const n = parseInt(v, 10);
-    if (isNaN(n) || n < 1) {
-      console.error("Error: width must be a positive integer");
-      process.exit(1);
-    }
-    return n;
-  })
-  .option("--height <n>", "Resize height in pixels", (v: string) => {
-    const n = parseInt(v, 10);
-    if (isNaN(n) || n < 1) {
-      console.error("Error: height must be a positive integer");
-      process.exit(1);
-    }
-    return n;
-  })
+  .option("--width <n>", "Resize width in pixels", positiveInt("width"))
+  .option("--height <n>", "Resize height in pixels", positiveInt("height"))
   .option("--no-metadata", "Strip EXIF metadata (ICC color profile preserved)")
   .option("-o, --output <dir>", "Output directory (default: same directory as input)")
-  .option(
-    "-c, --concurrency <n>",
-    "Parallel conversion limit",
-    (v: string) => {
-      const n = parseInt(v, 10);
-      if (isNaN(n) || n < 1) {
-        console.error("Error: concurrency must be a positive integer");
-        process.exit(1);
-      }
-      return n;
-    },
-    4
-  )
+  .option("-c, --concurrency <n>", "Parallel conversion limit", positiveInt("concurrency"), 4)
   .option("--quiet", "Suppress progress output (errors and summary still shown on failure)")
   .option("--json", "Output results as JSON (progress to stderr, data to stdout)")
   .option("--dry-run", "Show what would happen without writing files")

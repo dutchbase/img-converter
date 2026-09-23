@@ -214,3 +214,9 @@ describe("batch() — multiple items", () => {
     expect(results[0].outputBytes).toBeGreaterThan(0);
   });
 });
+
+describe("batch() — failures", () => {
+  it("throws when every item fails", async () => {
+    await expect(batch([{ input: "does-not-exist.png", format: "webp" }])).rejects.toThrow();
+  });
+});

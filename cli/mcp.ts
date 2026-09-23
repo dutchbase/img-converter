@@ -22,7 +22,7 @@ import path from "path";
 import { processImage, getImageMetadata } from "@/lib/imageProcessor";
 import { decodeHeicToBuffer } from "@/lib/heicDecoder";
 import { safeFetch } from "@/lib/safeFetch";
-import { OUTPUT_FORMATS, FORMAT_EXTENSIONS } from "@/types/index";
+import { OUTPUT_FORMATS, FORMAT_LABELS } from "@/types/index";
 import { detectFormatFromExt, buildOutputPath } from "@/cli/helpers";
 import type { ImageFormat } from "@/types/index";
 
@@ -90,7 +90,7 @@ export async function startMcpServer(): Promise<void> {
       {
         name: "convert_image",
         description:
-          "Convert an image file to another format. Supports JPEG, PNG, WebP, AVIF, GIF, TIFF, BMP output formats.",
+          "Convert an image file to another format. Supports JPEG, PNG, WebP, AVIF, GIF, TIFF output formats.",
         inputSchema: {
           type: "object",
           properties: {
@@ -232,7 +232,7 @@ export async function startMcpServer(): Promise<void> {
             type: "text",
             text: JSON.stringify(
               {
-                input: ["jpeg", "png", "webp", "avif", "gif", "tiff", "heic", "svg", "bmp"],
+                input: Object.keys(FORMAT_LABELS),
                 output: OUTPUT_FORMATS,
               },
               null,
@@ -349,7 +349,7 @@ export async function startMcpServer(): Promise<void> {
         throw new Error(`Batch limited to ${MAX_BATCH_ITEMS} items, got ${items.length}`);
       }
 
-      const concurrency = (args?.concurrency as number | undefined) ?? 4;
+      const concurrency = Math.min(16, Math.max(1, Math.floor(Number(args?.concurrency) || 4)));
       const results: object[] = [];
 
       const processItem = async (item: typeof items[0]): Promise<void> => {

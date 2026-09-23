@@ -256,7 +256,7 @@ batch_convert({
 
 ```
 list_supported_formats()
-→ { input: ["jpeg","png","webp","avif","gif","tiff","heic","svg","bmp"], output: ["jpeg","png","webp","avif","gif","tiff"] }
+→ { input: ["jpeg","png","webp","avif","gif","tiff","heic","svg"], output: ["jpeg","png","webp","avif","gif","tiff"] }
 ```
 
 ### Register the MCP server
@@ -466,7 +466,6 @@ async function handleUpload(buffer: Buffer): Promise<Buffer> {
 | TIFF | ✓ | ✓ | Print/archival |
 | HEIC/HEIF | ✓ | ✗ | Input-only. Decoded via heic-convert. |
 | SVG | ✓ | ✗ | Rasterized via librsvg. Output = SVG declared size unless overridden. |
-| BMP | ✓ | ✗ | Input-only. Sharp has no BMP encoder. |
 
 ---
 
@@ -502,8 +501,8 @@ In `--json` mode, exit code `1` still writes a JSON array to stdout — failed i
 
 | Mistake | Fix |
 |---------|-----|
-| Using `heic`, `svg`, or `bmp` as `-f` output | These are input-only formats. Use `jpeg`, `png`, `webp`, etc. |
-| PNG/WebP → JPEG without `--background` | Transparent pixels become black. Always pass `--background "#ffffff"` (or desired fill color). |
+| Using `heic` or `svg` as `-f` output | These are input-only formats. Use `jpeg`, `png`, `webp`, etc. |
+| PNG/WebP → JPEG transparency | Transparent pixels are filled white by default. Pass `--background "<color>"` for another fill. |
 | Unquoted glob patterns in shell | Shell expands `*.jpg` before the CLI sees it. Always quote: `"*.jpg"`. |
 | Expecting upscaling by default | Upscaling is disabled. The image is returned at original size if smaller than target. |
 | Assuming `--quality` affects GIF | GIF ignores quality entirely. |

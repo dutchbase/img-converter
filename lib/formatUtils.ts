@@ -23,7 +23,6 @@ export const EXT_TO_FORMAT: Record<string, ImageFormat> = {
   ".heic": "heic",
   ".heif": "heic",
   ".svg": "svg",
-  ".bmp": "bmp",
 };
 
 /**

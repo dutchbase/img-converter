@@ -150,9 +150,6 @@ export function detectFormat(mimeType: string): ImageFormat | null {
     "image/heic-sequence": "heic",
     "image/heif-sequence": "heic",
     "image/svg+xml": "svg",
-    "image/bmp": "bmp",
-    "image/x-bmp": "bmp",
-    "image/x-ms-bmp": "bmp",
   };
   return map[mimeType] ?? null;
 }
