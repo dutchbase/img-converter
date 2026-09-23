@@ -11,89 +11,57 @@
  */
 
 import dns from "dns";
+import net from "net";
 
 const MAX_RESPONSE_BYTES = 50 * 1024 * 1024; // 50 MB
 const FETCH_TIMEOUT_MS = 30_000; // 30 seconds
 const MAX_REDIRECT_DEPTH = 5;
 
+const blocked = new net.BlockList();
+for (const [n, p] of [["0.0.0.0", 8], ["10.0.0.0", 8], ["100.64.0.0", 10], ["127.0.0.0", 8], ["169.254.0.0", 16],
+  ["172.16.0.0", 12], ["192.0.0.0", 24], ["192.168.0.0", 16], ["198.18.0.0", 15], ["224.0.0.0", 3]] as const) {
+  blocked.addSubnet(n, p, "ipv4");
+}
+for (const [n, p] of [["::", 96], ["fc00::", 7], ["fe80::", 10], ["64:ff9b::", 96], ["ff00::", 8]] as const) {
+  blocked.addSubnet(n, p, "ipv6");
+}
+
 /**
- * Check whether a resolved IP address falls in a private/reserved range.
- * Covers: loopback, RFC1918, link-local, shared address space, IPv6 loopback,
- * IPv4-mapped IPv6 (::ffff:*), ULA (fc00::/7), link-local v6 (fe80::/10),
- * and 0.0.0.0/8.
+ * True for loopback, private, link-local, CGNAT, benchmark, multicast/reserved,
+ * ULA, NAT64 and IPv4-mapped forms of those (dotted or hex, e.g. ::ffff:7f00:1).
  */
-function isPrivateIP(ip: string): boolean {
-  // Handle IPv4-mapped IPv6 addresses like ::ffff:127.0.0.1
-  const mappedMatch = ip.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/i);
-  if (mappedMatch) {
-    return isPrivateIPv4(mappedMatch[1]);
+export function isPrivateIP(ip: string): boolean {
+  let bare = ip.replace(/^\[|\]$/g, "").toLowerCase();
+  const hex = bare.match(/^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/);
+  if (hex) {
+    const a = parseInt(hex[1], 16), b = parseInt(hex[2], 16);
+    bare = `${a >> 8}.${a & 255}.${b >> 8}.${b & 255}`;
   }
-
-  // Plain IPv4
-  if (/^\d+\.\d+\.\d+\.\d+$/.test(ip)) {
-    return isPrivateIPv4(ip);
-  }
-
-  // IPv6
-  return isPrivateIPv6(ip);
-}
-
-function isPrivateIPv4(ip: string): boolean {
-  const parts = ip.split(".").map(Number);
-  const [a, b] = parts;
-
-  // 0.0.0.0/8
-  if (a === 0) return true;
-  // 10.0.0.0/8
-  if (a === 10) return true;
-  // 127.0.0.0/8 (loopback)
-  if (a === 127) return true;
-  // 169.254.0.0/16 (link-local)
-  if (a === 169 && b === 254) return true;
-  // 172.16.0.0/12
-  if (a === 172 && b >= 16 && b <= 31) return true;
-  // 192.168.0.0/16
-  if (a === 192 && b === 168) return true;
-  // 100.64.0.0/10 (shared address space / CGNAT)
-  if (a === 100 && b >= 64 && b <= 127) return true;
-
-  return false;
-}
-
-function isPrivateIPv6(ip: string): boolean {
-  const normalized = ip.toLowerCase().replace(/^\[|\]$/g, "");
-
-  // ::1 loopback
-  if (normalized === "::1") return true;
-  // :: (unspecified)
-  if (normalized === "::") return true;
-  // fc00::/7 — ULA (fc or fd prefix)
-  if (normalized.startsWith("fc") || normalized.startsWith("fd")) return true;
-  // fe80::/10 — link-local
-  if (normalized.startsWith("fe80")) return true;
-
-  return false;
+  bare = bare.replace(/^::ffff:(?=\d+\.)/, "");
+  return blocked.check(bare, net.isIPv4(bare) ? "ipv4" : "ipv6");
 }
 
 /**
- * Resolve a hostname to an IP via DNS and validate it is not private.
+ * Resolve a hostname via DNS and validate that no answer is private.
  * Throws if the hostname resolves to a private/reserved IP.
  */
 async function resolveAndValidateHost(hostname: string): Promise<void> {
   // If the hostname is already an IP literal, check directly
   const bare = hostname.replace(/^\[|\]$/g, "");
-  if (/^\d+\.\d+\.\d+\.\d+$/.test(bare) || bare.includes(":")) {
+  if (net.isIP(bare)) {
     if (isPrivateIP(bare)) {
       throw new Error(`Requests to private/internal addresses are not allowed: ${hostname}`);
     }
     return;
   }
 
-  // DNS lookup
-  const { address } = await dns.promises.lookup(hostname);
-  if (isPrivateIP(address)) {
+  // ponytail: DNS-rebinding TOCTOU remains (fetch re-resolves); pin the address via an undici Agent
+  // `connect.lookup` if this is ever exposed to untrusted remote callers
+  const addresses = await dns.promises.lookup(hostname, { all: true });
+  const bad = addresses.find((a) => isPrivateIP(a.address));
+  if (bad) {
     throw new Error(
-      `Requests to private/internal addresses are not allowed: ${hostname} resolved to ${address}`
+      `Requests to private/internal addresses are not allowed: ${hostname} resolved to ${bad.address}`
     );
   }
 }
@@ -128,60 +96,64 @@ async function safeFetchInternal(url: string, depth: number): Promise<Buffer> {
   await resolveAndValidateHost(parsed.hostname);
 
   const controller = new AbortController();
+  // Covers the whole exchange, including the body download
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  const timeoutError = () => new Error(`Request timed out after ${FETCH_TIMEOUT_MS / 1000}s: ${url}`);
 
-  let res: Response;
+  const chunks: Buffer[] = [];
   try {
-    res = await fetch(url, { signal: controller.signal, redirect: "manual" });
-  } catch (err) {
-    if ((err as Error).name === "AbortError") {
-      throw new Error(`Request timed out after ${FETCH_TIMEOUT_MS / 1000}s: ${url}`);
+    let res: Response;
+    try {
+      res = await fetch(url, { signal: controller.signal, redirect: "manual" });
+    } catch (err) {
+      if ((err as Error).name === "AbortError") throw timeoutError();
+      throw err;
     }
-    throw err;
+
+    // Handle redirects manually — validate each redirect target
+    if (res.status >= 300 && res.status < 400) {
+      const location = res.headers.get("location");
+      if (!location) {
+        throw new Error(`Redirect response ${res.status} without Location header: ${url}`);
+      }
+      // Resolve relative redirects against the current URL
+      const redirectUrl = new URL(location, url).toString();
+      clearTimeout(timer);
+      return safeFetchInternal(redirectUrl, depth + 1);
+    }
+
+    if (!res.ok) {
+      throw new Error(`Failed to fetch ${url}: ${res.status} ${res.statusText}`);
+    }
+
+    // Stream and cap the response body to avoid loading unbounded data into memory
+    const reader = res.body?.getReader();
+    if (!reader) {
+      throw new Error(`No response body for ${url}`);
+    }
+
+    let totalBytes = 0;
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        totalBytes += value.byteLength;
+        if (totalBytes > MAX_RESPONSE_BYTES) {
+          reader.cancel();
+          throw new Error(
+            `Response from ${url} exceeds the ${MAX_RESPONSE_BYTES / (1024 * 1024)} MB size limit`
+          );
+        }
+        chunks.push(Buffer.from(value));
+      }
+    } catch (err) {
+      if ((err as Error).name === "AbortError") throw timeoutError();
+      throw err;
+    } finally {
+      reader.releaseLock();
+    }
   } finally {
     clearTimeout(timer);
-  }
-
-  // Handle redirects manually — validate each redirect target
-  if (res.status >= 300 && res.status < 400) {
-    const location = res.headers.get("location");
-    if (!location) {
-      throw new Error(`Redirect response ${res.status} without Location header: ${url}`);
-    }
-    // Resolve relative redirects against the current URL
-    const redirectUrl = new URL(location, url).toString();
-    return safeFetchInternal(redirectUrl, depth + 1);
-  }
-
-  if (!res.ok) {
-    throw new Error(`Failed to fetch ${url}: ${res.status} ${res.statusText}`);
-  }
-
-  // Stream and cap the response body to avoid loading unbounded data into memory
-  const chunks: Buffer[] = [];
-  let totalBytes = 0;
-
-  // Node 18+ fetch returns a Web Streams ReadableStream; convert to async iterator
-  const reader = res.body?.getReader();
-  if (!reader) {
-    throw new Error(`No response body for ${url}`);
-  }
-
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      totalBytes += value.byteLength;
-      if (totalBytes > MAX_RESPONSE_BYTES) {
-        reader.cancel();
-        throw new Error(
-          `Response from ${url} exceeds the ${MAX_RESPONSE_BYTES / (1024 * 1024)} MB size limit`
-        );
-      }
-      chunks.push(Buffer.from(value));
-    }
-  } finally {
-    reader.releaseLock();
   }
 
   return Buffer.concat(chunks);
