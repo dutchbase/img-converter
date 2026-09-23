@@ -193,11 +193,25 @@ export interface BatchApiOptions {
 // --- CLI manifest batch types ---
 
 export interface ManifestItem {
-  input: string;
-  output?: string;
-  format: ImageFormat;
+  input: string;             // file path, glob-free, or HTTP(S) URL
+  format: ImageFormat;       // output format
+  output?: string;           // exact output file path
+  outputDir?: string;        // output directory (ignored when output is set)
   quality?: number;
   width?: number;
   height?: number;
+  fit?: "inside" | "cover" | "contain" | "fill";
+  allowUpscaling?: boolean;
+  crop?: CropOptions | string; // object or "left,top,width,height"
   removeMetadata?: boolean;
+  rotate?: number;
+  flip?: boolean;
+  flop?: boolean;
+  background?: string;
+  grayscale?: boolean;
+  blur?: number;
+  sharpen?: boolean;
+  normalize?: boolean;
+  trim?: boolean;
+  maxSize?: number | string; // bytes, or "150KB" / "1.5MB"
 }

@@ -2,7 +2,7 @@ import os from "os";
 import path from "path";
 import fs from "fs/promises";
 import sharp from "sharp";
-import { runConvert, runInfo, resolveInputs, errorCode } from "@/cli/run";
+import { runConvert, runInfo, resolveInputs, errorCode, manifestToJobs } from "@/cli/run";
 import { parseSize, parseCrop } from "@/cli/helpers";
 import type { ConvertOptions } from "@/types/index";
 
@@ -85,4 +85,18 @@ it("errorCode maps known messages", () => {
   expect(errorCode(new Error("IMAGE_TOO_LARGE"))).toBe("IMAGE_TOO_LARGE");
   expect(errorCode(new Error("Input buffer contains unsupported image format"))).toBe("UNSUPPORTED_INPUT");
   expect(errorCode(new Error("x"))).toBe("CONVERSION_FAILED");
+});
+
+describe("manifestToJobs", () => {
+  it("maps every option and rejects unknown keys", () => {
+    const [job] = manifestToJobs([{
+      input: "a.png", format: "jpeg", fit: "cover", width: 100, height: 100, background: "#fff", maxSize: "50KB", crop: "0,0,10,10",
+    }]);
+    expect(job.options).toMatchObject({ targetFormat: "jpeg", fit: "cover", resizeWidth: 100, background: "#fff", crop: { width: 10 } });
+    expect(job.maxBytes).toBe(51200);
+    expect(() => manifestToJobs([{ input: "a.png", format: "webp", widht: 5 }])).toThrow(/widht.*Valid keys/);
+    expect(() => manifestToJobs([{ input: "a.png", format: "bmp" }])).toThrow(/format/);
+    expect(() => manifestToJobs([{ input: "a.png", format: "png", maxSize: 1000 }])).toThrow(/maxSize/);
+    expect(() => manifestToJobs({})).toThrow(/array/);
+  });
 });

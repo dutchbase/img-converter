@@ -12,8 +12,8 @@ import { processImage, processToMaxBytes, getImageMetadata } from "@/lib/imagePr
 import { decodeHeicToBuffer } from "@/lib/heicDecoder";
 import { safeFetch } from "@/lib/safeFetch";
 import { buildOutputPath, detectFormatFromExt } from "@/lib/formatUtils";
-import { CliError, type ErrorCode } from "@/cli/helpers";
-import type { ConvertOptions, ImageFormat } from "@/types/index";
+import { CliError, parseCrop, parseSize, type ErrorCode } from "@/cli/helpers";
+import { OUTPUT_FORMATS, QUALITY_FORMATS, type ConvertOptions, type CropOptions, type ImageFormat, type ManifestItem } from "@/types/index";
 
 export { CliError, type ErrorCode };
 
@@ -204,4 +204,72 @@ export async function runInfo(inputs: string[]): Promise<InfoResult[]> {
     }
   }
   return results;
+}
+
+const MANIFEST_KEYS: (keyof ManifestItem)[] = [
+  "input", "format", "output", "outputDir", "quality", "width", "height", "fit", "allowUpscaling", "crop",
+  "removeMetadata", "rotate", "flip", "flop", "background", "grayscale", "blur", "sharpen", "normalize", "trim", "maxSize",
+];
+const FITS = ["inside", "cover", "contain", "fill"];
+
+/** Validate a parsed batch manifest and turn it into jobs. Throws CliError("INVALID_ARGS") naming the bad item. */
+export function manifestToJobs(raw: unknown): Job[] {
+  if (!Array.isArray(raw) || raw.length === 0) {
+    throw new CliError("INVALID_ARGS", "Manifest must be a non-empty JSON array of items");
+  }
+  return raw.map((item: ManifestItem, i) => {
+    const bad = (msg: string) => new CliError("INVALID_ARGS", `Manifest item [${i}]: ${msg}`);
+    if (typeof item !== "object" || item === null) throw bad("must be an object");
+    for (const k of Object.keys(item)) {
+      if (!MANIFEST_KEYS.includes(k as keyof ManifestItem)) {
+        throw bad(`unknown key "${k}". Valid keys: ${MANIFEST_KEYS.join(", ")}`);
+      }
+    }
+    if (typeof item.input !== "string" || !item.input) throw bad(`"input" must be a file path or URL`);
+    if (!OUTPUT_FORMATS.includes(item.format)) throw bad(`"format" must be one of ${OUTPUT_FORMATS.join(", ")}`);
+    if (item.fit !== undefined && !FITS.includes(item.fit)) throw bad(`"fit" must be one of ${FITS.join(", ")}`);
+    if (item.quality !== undefined && !(Number.isInteger(item.quality) && item.quality >= 1 && item.quality <= 100)) {
+      throw bad(`"quality" must be an integer 1-100`);
+    }
+    for (const k of ["width", "height"] as const) {
+      if (item[k] !== undefined && !(Number.isInteger(item[k]) && (item[k] as number) > 0)) throw bad(`"${k}" must be a positive integer`);
+    }
+    let maxBytes: number | undefined;
+    if (item.maxSize !== undefined) {
+      if (!QUALITY_FORMATS.includes(item.format)) throw bad(`"maxSize" requires format ${QUALITY_FORMATS.join(", ")}`);
+      maxBytes = typeof item.maxSize === "string" ? parseSize(item.maxSize) : item.maxSize;
+    }
+    let crop: CropOptions | undefined;
+    try {
+      crop = typeof item.crop === "string" ? parseCrop(item.crop) : item.crop;
+    } catch (err) {
+      throw bad((err as Error).message);
+    }
+    return {
+      input: item.input,
+      output: item.output,
+      outputDir: item.outputDir,
+      maxBytes,
+      options: {
+        targetFormat: item.format,
+        quality: item.quality ?? 85,
+        resizeWidth: item.width ?? null,
+        resizeHeight: item.height ?? null,
+        maintainAspectRatio: true,
+        removeMetadata: item.removeMetadata ?? false,
+        fit: item.fit,
+        allowUpscaling: item.allowUpscaling,
+        crop,
+        rotate: item.rotate,
+        flip: item.flip,
+        flop: item.flop,
+        background: item.background,
+        grayscale: item.grayscale,
+        blur: item.blur,
+        sharpen: item.sharpen,
+        normalize: item.normalize,
+        trim: item.trim,
+      },
+    };
+  });
 }
