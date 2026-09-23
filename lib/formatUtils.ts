@@ -47,7 +47,10 @@ export function buildOutputPath(inputPath: string, format: ImageFormat, outputDi
   const out = path.join(dir, `${basename}.${FORMAT_EXTENSIONS[format]}`);
   // Case-insensitive: Photo.JPG and Photo.jpg are the same file on macOS/Windows
   if (!isUrl && path.resolve(out).toLowerCase() === path.resolve(inputPath).toLowerCase()) {
-    throw new Error(`Output would overwrite input "${inputPath}" — choose an output directory`);
+    throw Object.assign(
+      new Error(`Output would overwrite input "${inputPath}" — choose an output directory`),
+      { code: "OUTPUT_IS_INPUT" }
+    );
   }
   return out;
 }

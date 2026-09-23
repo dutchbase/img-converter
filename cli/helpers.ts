@@ -4,12 +4,41 @@
  * No Commander, Sharp, or glob imports — all functions receive plain values.
  */
 
-import { ImageFormat, ConvertOptions } from "@/types/index";
+import { ImageFormat, ConvertOptions, CropOptions } from "@/types/index";
 
 // Re-export from the shared lib layer so cli/ never defines its own copy.
 // lib/api.ts and cli/ both import from lib/formatUtils to keep the dependency
 // direction strictly: cli/ → lib/ → types/
 export { detectFormatFromExt, EXT_TO_FORMAT, buildOutputPath } from "@/lib/formatUtils";
+
+/** Stable, machine-readable error codes emitted in --json output. */
+export type ErrorCode =
+  | "INVALID_ARGS" | "NO_INPUT" | "NOT_FOUND" | "UNSUPPORTED_INPUT" | "IMAGE_TOO_LARGE"
+  | "LIVE_PHOTO_NOT_SUPPORTED" | "OUTPUT_IS_INPUT" | "DUPLICATE_OUTPUT" | "MAX_SIZE_UNREACHABLE"
+  | "BLOCKED_URL" | "FETCH_FAILED" | "CONVERSION_FAILED";
+
+export class CliError extends Error {
+  constructor(public code: ErrorCode, message: string) {
+    super(message);
+  }
+}
+
+/** Parse "150KB", "1.5MB" or a plain byte count (KB = 1024 bytes). */
+export function parseSize(v: string): number {
+  const m = /^(\d+(?:\.\d+)?)\s*(b|kb|mb)?$/i.exec(v.trim());
+  if (!m) throw new CliError("INVALID_ARGS", `Invalid size "${v}" — use e.g. 150KB, 1.5MB or a byte count`);
+  const mult = { b: 1, kb: 1024, mb: 1024 * 1024 }[(m[2] ?? "b").toLowerCase() as "b" | "kb" | "mb"];
+  return Math.floor(parseFloat(m[1]) * mult);
+}
+
+/** Parse "left,top,width,height" in pixels. */
+export function parseCrop(v: string): CropOptions {
+  const n = v.split(",").map((s) => Number(s.trim()));
+  if (n.length !== 4 || n.some((x) => !Number.isInteger(x) || x < 0) || n[2] < 1 || n[3] < 1) {
+    throw new CliError("INVALID_ARGS", `Invalid crop "${v}" — use left,top,width,height in pixels (e.g. 0,0,800,600)`);
+  }
+  return { left: n[0], top: n[1], width: n[2], height: n[3] };
+}
 
 /**
  * Commander parsed opts shape accepted by buildConvertOptions.
