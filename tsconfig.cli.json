@@ -6,6 +6,7 @@
     "outDir": "dist/cli",
     "rootDir": ".",
     "noEmit": false,
+    "declaration": true,
     "target": "ES2022",
     "lib": ["ES2022"],
     "paths": {

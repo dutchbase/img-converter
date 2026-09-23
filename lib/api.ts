@@ -25,6 +25,17 @@ import type {
 } from "@/types/index";
 import { detectFormatFromExt, buildOutputPath } from "@/lib/formatUtils";
 
+export type {
+  ImageFormat,
+  CropOptions,
+  ConvertApiOptions,
+  ConvertApiResult,
+  ImageInfo,
+  BatchApiItem,
+  BatchApiResult,
+  BatchApiOptions,
+} from "@/types/index";
+
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------

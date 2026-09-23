@@ -26,6 +26,7 @@ Format: conventional commits.
 - Two inputs that map to the same output no longer silently overwrite each other (`DUPLICATE_OUTPUT`).
 - Existing files whose names contain glob characters (e.g. `photo [1].png`) are converted instead of "no files matched".
 - `img-convert mcp` no longer crashes on startup in the installed package (package.json lookup).
+- TypeScript declarations now ship with the package (`types` previously pointed at a file that was never built). Option/result types such as `ConvertApiOptions` are exported.
 
 ---
 

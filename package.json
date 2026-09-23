@@ -36,12 +36,12 @@
     "SKILL.md"
   ],
   "main": "./dist/cli/lib/api.js",
-  "types": "./dist/cli/types/index.d.ts",
+  "types": "./dist/cli/lib/api.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/cli/lib/api.d.ts",
       "require": "./dist/cli/lib/api.js",
-      "import": "./dist/cli/lib/api.js",
-      "types": "./dist/cli/types/index.d.ts"
+      "import": "./dist/cli/lib/api.js"
     }
   },
   "bin": {
