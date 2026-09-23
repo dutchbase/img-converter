@@ -2,6 +2,7 @@
 // Wave 1 — real assertions for CLI pure helpers.
 // RED: This file will fail until cli/helpers.ts is created.
 
+import path from "path";
 import {
   detectFormatFromExt,
   buildOutputPath,
@@ -150,5 +151,17 @@ describe("pipe mode detection", () => {
 
   it("isPipeMode returns false when isTTY is true", () => {
     expect(isPipeMode(true, [])).toBe(false);
+  });
+});
+
+describe("buildOutputPath — safety", () => {
+  it("refuses to overwrite the input file", () => {
+    expect(() => buildOutputPath("/photos/a.png", "png")).toThrow(/overwrite/);
+  });
+  it("allows same format when an output dir is given", () => {
+    expect(buildOutputPath("/photos/a.png", "png", "/out")).toBe("/out/a.png");
+  });
+  it("writes URL inputs to cwd using the URL basename", () => {
+    expect(buildOutputPath("https://x.com/images/a.png?v=1", "webp")).toBe(path.join(process.cwd(), "a.webp"));
   });
 });

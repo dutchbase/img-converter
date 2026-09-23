@@ -8,7 +8,7 @@ import pLimit from "p-limit";
 import { processImage, getImageMetadata } from "@/lib/imageProcessor";
 import { decodeHeicToBuffer } from "@/lib/heicDecoder";
 import { safeFetch } from "@/lib/safeFetch";
-import { OUTPUT_FORMATS, FORMAT_EXTENSIONS, ManifestItem } from "@/types/index";
+import { OUTPUT_FORMATS, ManifestItem } from "@/types/index";
 import {
   detectFormatFromExt,
   buildOutputPath,
@@ -176,14 +176,7 @@ program
           const outputBuffer = await processImage(inputBuffer, convertOpts, sourceFormat);
           const meta = await getImageMetadata(outputBuffer);
 
-          // Determine output path
-          let outputPath = item.output;
-          if (!outputPath) {
-            const ext = FORMAT_EXTENSIONS[item.format];
-            const stem = path.basename(item.input, path.extname(item.input));
-            const dir = path.dirname(item.input);
-            outputPath = path.join(dir, `${stem}.${ext}`);
-          }
+          const outputPath = item.output ?? buildOutputPath(item.input, item.format);
 
           await fs.writeFile(outputPath, outputBuffer);
 
@@ -435,9 +428,7 @@ program
           }
 
           const sourceFormat = isUrl(filePath) ? undefined : (detectFormatFromExt(filePath) ?? undefined);
-          const outputPath = isUrl(filePath)
-            ? buildOutputPath(new URL(filePath).pathname, targetFormat, opts.output)
-            : buildOutputPath(filePath, targetFormat, opts.output);
+          const outputPath = buildOutputPath(filePath, targetFormat, opts.output);
 
           if (opts.dryRun) {
             const msg = `[dry-run] ${inputName} \u2192 ${path.basename(outputPath)} (${formatKB(inputBuffer.length)})\n`;

@@ -12,7 +12,6 @@ import pLimit from "p-limit";
 import { processImage, getImageMetadata } from "@/lib/imageProcessor";
 import { decodeHeicToBuffer } from "@/lib/heicDecoder";
 import { safeFetch } from "@/lib/safeFetch";
-import { FORMAT_EXTENSIONS } from "@/types/index";
 import { processingQueue } from "@/lib/processingQueue";
 import type {
   ImageFormat,
@@ -24,7 +23,7 @@ import type {
   BatchApiOptions,
   ConvertOptions,
 } from "@/types/index";
-import { detectFormatFromExt } from "@/lib/formatUtils";
+import { detectFormatFromExt, buildOutputPath } from "@/lib/formatUtils";
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -197,15 +196,7 @@ export async function batch(
         }
         const meta = await getImageMetadata(outputBuffer);
 
-        // Determine output path
-        let outputPath = item.output;
-        if (!outputPath) {
-          const inputBase = typeof item.input === "string" ? item.input : "output";
-          const ext = FORMAT_EXTENSIONS[item.format];
-          const stem = path.basename(inputBase, path.extname(inputBase));
-          const dir = outputDir ?? path.dirname(typeof item.input === "string" ? item.input : ".");
-          outputPath = path.join(dir, `${stem}.${ext}`);
-        }
+        const outputPath = item.output ?? buildOutputPath(item.input, item.format, outputDir);
 
         await fs.writeFile(outputPath, outputBuffer);
 

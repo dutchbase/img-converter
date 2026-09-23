@@ -4,34 +4,12 @@
  * No Commander, Sharp, or glob imports — all functions receive plain values.
  */
 
-import path from "path";
-import { ImageFormat, FORMAT_EXTENSIONS, ConvertOptions } from "@/types/index";
+import { ImageFormat, ConvertOptions } from "@/types/index";
 
 // Re-export from the shared lib layer so cli/ never defines its own copy.
 // lib/api.ts and cli/ both import from lib/formatUtils to keep the dependency
 // direction strictly: cli/ → lib/ → types/
-export { detectFormatFromExt, EXT_TO_FORMAT } from "@/lib/formatUtils";
-
-/**
- * Build the output file path for a converted image.
- *
- * @param inputPath  - Absolute or relative path to the source file
- * @param format     - Target ImageFormat
- * @param outputDir  - Optional directory for the output file (defaults to input directory)
- */
-export function buildOutputPath(
-  inputPath: string,
-  format: ImageFormat,
-  outputDir?: string
-): string {
-  const dir = outputDir ?? path.dirname(inputPath);
-  const ext = path.extname(inputPath);
-  // Sanitize basename to prevent path traversal (e.g. "../../etc/passwd")
-  const rawBasename = ext ? path.basename(inputPath, ext) : path.basename(inputPath);
-  const basename = rawBasename.replace(/[^a-zA-Z0-9._-]/g, "_") || "output";
-  const newExt = FORMAT_EXTENSIONS[format];
-  return path.join(dir, `${basename}.${newExt}`);
-}
+export { detectFormatFromExt, EXT_TO_FORMAT, buildOutputPath } from "@/lib/formatUtils";
 
 /**
  * Commander parsed opts shape accepted by buildConvertOptions.
