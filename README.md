@@ -824,3 +824,6 @@ Pull requests are welcome.
 ## License
 
 MIT
+
+
+<!-- Security scan triggered at 2026-10-07 11:59:21 -->
